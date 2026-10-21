@@ -1839,12 +1839,14 @@
     });
   }
 
-  /** 一张封面卡（首次游玩视图用） */
+  /** 一张封面卡（首次游玩视图用）：右下角角标 = 首次游玩日期（2026-10-21 用户定，替换原来的时长角标） */
   function fcCardHtml(r) {
+    var d = String(r.first || '');
+    var dateTxt = d.length >= 10 ? (Number(d.slice(5, 7)) + '月' + Number(d.slice(8, 10)) + '日') : '';
     return '<div class="fc-card" data-ns-game="' + esc(String(r.p.externalId || '')) + '">' +
       '<div class="fc-imgwrap">' +
         '<img class="fc-img" src="' + esc(r.game.cover || '') + '" alt="" loading="lazy">' +
-        '<span class="fc-min">' + esc(formatMinutes(r.minutes)) + '</span>' +
+        '<span class="fc-min">' + esc(dateTxt) + '</span>' +
       '</div>' +
       '<span class="fc-name" title="' + esc(r.game.title) + '">' + esc(r.game.title) + '</span>' +
     '</div>';
@@ -1894,7 +1896,7 @@
 
     return '<div class="tl-note">按<b>第一次玩这款游戏</b>的时间排（小黑盒同款），<b>一次加载一年</b>，年内再按月分开。' +
         '<b>只有任天堂提供首次游玩时间</b>（226 款全有），Steam / Xbox / Retro 官方没有这个字段，' +
-        '所以这个视图只含任天堂 —— 也不用成就时间去凑。卡片右下角是这款游戏的累计时长。</div>' +
+        '所以这个视图只含任天堂 —— 也不用成就时间去凑。卡片右下角是这款游戏的<b>首次游玩日期</b>。</div>' +
       '<div class="tl-bar"><button class="src-btn" id="share-growth">生成分享成长图</button>' +
         '<span class="tl-lb">把任天堂的入坑轨迹做成一张竖图存下来</span></div>' +
       body + more;
@@ -2484,7 +2486,6 @@
     { id: 'panel-recent',   name: '最近在玩' },
     { id: 'panel-top',      name: '时长排行' },
     { id: 'panel-year',     name: '年度统计' },
-    { id: 'panel-week',     name: '近 12 周' },
     { id: 'panel-timeline', name: '游玩时间轴' },
     { id: 'panel-dist',     name: '平台分布' },
   ];
@@ -2539,8 +2540,6 @@
 
     var k = computeKPIs();
     var dist = platformDistribution();
-    var years = yearsWithData();
-    var defaultYear = years.length ? years[years.length - 1] : '';
 
     var maxDist = dist.length ? dist[0].minutes : 1;
     var distHtml = dist.map(function (r) {
@@ -2549,19 +2548,6 @@
         '<div class="pdist-name">' + esc(r.platform.name) + '</div>' +
         '<div class="pdist-track"><div class="pdist-fill" style="width:' + pct + '%;background:' + r.platform.color + '">' +
           formatMinutes(r.minutes) + '</div></div></div>';
-    }).join('');
-
-    var weeks = weeklyBuckets();
-    var maxWeek = weeks.length ? Math.max.apply(null, weeks.map(function (w) { return w.minutes; })) : 1;
-    var chartHtml = weeks.map(function (w) {
-      var h = Math.max(3, Math.round(w.minutes / maxWeek * 100));
-      return '<div class="week-col">' +
-        '<div class="week-bar-wrap"><div class="week-bar" style="height:' + h + '%;" data-min="' + formatMinutes(w.minutes) + '"></div></div>' +
-        '<div class="week-label">' + esc(w.label) + '</div></div>';
-    }).join('');
-
-    var yearOpts = years.map(function (y) {
-      return '<option value="' + y + '"' + (y === defaultYear ? ' selected' : '') + '>' + y + ' 年</option>';
     }).join('');
 
     el.innerHTML =
@@ -2575,15 +2561,15 @@
         kpiCard('已解锁成就', k.achUnlocked, '/ ' + k.achTotal, '已解锁 / 总数') +
         kpiCard('平台数', k.platforms, '', '跨平台聚合') +
       '</div>' +
-      // 面板顺序（用户 2026-10-19 定）：最近在玩 → 时长排行 → 年度 → 近12周 → 时间轴 → 平台分布（最末）
+      // 面板顺序（用户 2026-10-19 定；近12周已按用户 2026-10-21 要求删除；年度统计 2026-10-21 重设计）：
+      // 最近在玩 → 时长排行 → 年度 → 时间轴 → 平台分布（最末）
       recentPlayingPanel() +
       topPanel() +
       '<div class="panel" id="panel-year"><h3>年度统计</h3>' +
         '<div class="year-bar"><span style="color:var(--text-2);font-size:13px">选择年份</span>' +
-          '<select class="year-select" id="year-select">' + yearOpts + '</select></div>' +
-        '<div class="year-stats" id="year-stats"></div>' +
+          '<select class="year-select" id="year-select"></select></div>' +
+        '<div id="year-stats" class="muted">统计加载中…</div>' +
       '</div>' +
-      '<div class="panel" id="panel-week"><h3>近 12 周游玩时长</h3><div class="week-chart">' + chartHtml + '</div></div>' +
       '<div class="panel" id="panel-timeline"><h3>游玩时间轴 · 跨平台</h3>' +
         '<div class="tl-bar">' +
           '<span class="dbar-toggle">' +
@@ -2600,10 +2586,10 @@
       '</div></div>';
 
     bindCareerNav();
-    updateYearStats(defaultYear);
+    loadYearStats('');
     var sel = document.getElementById('year-select');
     if (sel) {
-      sel.addEventListener('change', function () { updateYearStats(sel.value); });
+      sel.addEventListener('change', function () { loadYearStats(sel.value); });
     }
     var tlf = document.getElementById('tl-filter');
     if (tlf) {
@@ -2663,14 +2649,117 @@
     if (box) box.innerHTML = timelineHtml();
   }
 
-  function updateYearStats(year) {
+  /* ---- 年度统计 v2（2026-10-21 设计定稿）----
+   * 指标与口径见 importers/year_stats.mjs 顶部注释；手机不参与。
+   * 数据由服务端 /api/stats/year 纯本地聚合（任天堂按天 + Xbox 成就明细都在服务端磁盘上）。
+   */
+  var yearStatsCache = {};
+
+  function yearBarRow(name, count, max, color) {
+    var pct = Math.max(2, Math.round(count / (max || 1) * 100));
+    return '<div class="pdist-row">' +
+      '<div class="pdist-name">' + esc(name) + '</div>' +
+      '<div class="pdist-track"><div class="pdist-fill" style="width:' + pct + '%;background:' + (color || 'var(--accent)') + '">' +
+        count + ' 款</div></div></div>';
+  }
+
+  /** 标题 → 封面 本地映射（给 100% 列表等文字行补图标；纯本地匹配，不发请求） */
+  function coverByTitle() {
+    var map = {};
+    (DATA.games || []).forEach(function (g) {
+      if (g.cover && g.title) map[String(g.title).toLowerCase()] = g.cover;
+    });
+    return map;
+  }
+
+  function renderYearStats(j) {
     var box = document.getElementById('year-stats');
     if (!box) return;
-    var s = yearStats(year);
-    box.innerHTML =
-      yearCell('该年玩过游戏', s.gameCount, '款') +
-      yearCell('涉及平台', s.platformCount, '个') +
-      yearCell('该年总时长', formatMinutes(s.total), '');
+    var html = '';
+
+    html += '<div class="kpi-row">' +
+      kpiCard('今年玩过', j.playedTotal, ' 款', '最后游玩在今年 · 时长 ≥1 小时') +
+      kpiCard('今年新玩', j.newTotal, ' 款', '首次游玩 / 首个成就 / 新领') +
+      kpiCard('今年成就', j.achTotal, ' 个', '按解锁日期') +
+      kpiCard('今年时长 · 任天堂', formatMinutes(j.nintendo.totalMinutes || 0), '', '按天记录 · ' + (j.nintendo.daysPlayed || 0) + ' 天') +
+    '</div>';
+
+    // 各平台今年玩过 · 柱状对比（用户 2026-10-21 加）
+    var colors = { Steam: '#1b9be8', Xbox: '#3ea743', Retro: '#c86428', '任天堂': '#d43d3d', Epic: '#6d6d6d' };
+    var playedRows = j.byPlatform.filter(function (p) { return p.played > 0; });
+    if (playedRows.length) {
+      var maxP = Math.max.apply(null, playedRows.map(function (p) { return p.played; }));
+      html += '<div class="year-block"><div class="year-block-title">各平台今年玩过</div>' +
+        playedRows.map(function (p) { return yearBarRow(p.name, p.played, maxP, colors[p.name]); }).join('') +
+        '</div>';
+    } else {
+      html += '<div class="year-block muted">今年还没有各平台的游玩记录。</div>';
+    }
+
+    // 今年 100% 达成（没有就整块隐藏）
+    if (j.hundred && j.hundred.length) {
+      var cMap = coverByTitle();
+      html += '<div class="year-block"><div class="year-block-title">今年 100% 达成 · ' + j.hundred.length + ' 款</div>' +
+        j.hundred.map(function (h) {
+          var cv = cMap[String(h.title).toLowerCase()] || '';
+          return '<div class="hundred-row">' +
+            (cv ? '<img class="hundred-cover" src="' + esc(cv) + '" alt="" loading="lazy">' : '<span class="hundred-cover hundred-nocover"></span>') +
+            '<span class="hundred-name">' + esc(h.title) + '</span>' +
+            '<span class="hundred-meta">' + esc(h.platform) + ' · ' + esc(h.date) + '</span></div>';
+        }).join('') + '</div>';
+    }
+
+    // 今年最上头（任天堂专属，有按天数据且连续 ≥2 天才显示）
+    var t = j.nintendo && j.nintendo.topStreak;
+    if (t) {
+      html += '<div class="year-block year-hot">' +
+        '<div class="year-block-title">今年最上头 · 任天堂</div>' +
+        '<div class="hot-line"><b>' + esc(t.title) + '</b>　连续 <b>' + t.streak + '</b> 天没放下，今年共玩 <b>' +
+        formatMinutes(t.minutes) + '</b>（' + t.days + ' 天有记录）</div></div>';
+    }
+
+    html += '<div class="year-note">口径：手机不参与；「玩过」= 最后游玩时间在今年且总时长 ≥1 小时（Epic 无游玩时间，只按新领统计）；' +
+      '「新玩」= 首次游玩 / 首个成就 / 新领落在今年；总时长仅任天堂有按天数据。</div>';
+
+    box.className = '';
+    box.innerHTML = html;
+  }
+
+  function loadYearStats(year) {
+    if (window.GH_STATIC) return;   // 线上只读版没有服务端，且该面板本就隐藏
+    var sel = document.getElementById('year-select');
+    var box = document.getElementById('year-stats');
+    if (!box) return;
+    var cacheKey = String(year || '');
+    if (yearStatsCache[cacheKey]) {
+      var c = yearStatsCache[cacheKey];
+      fillYearSelect(c.years, c.year);
+      renderYearStats(c);
+      return;
+    }
+    box.className = 'muted';
+    box.innerHTML = '统计加载中…';
+    fetch('/api/stats/year' + (year ? '?year=' + encodeURIComponent(year) : ''))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || '统计失败');
+        yearStatsCache[cacheKey] = j;
+        fillYearSelect(j.years, j.year);
+        renderYearStats(j);
+      })
+      .catch(function (e) {
+        box.className = 'muted';
+        box.innerHTML = '统计读取失败：' + esc(e.message);
+      });
+  }
+
+  function fillYearSelect(years, current) {
+    var sel = document.getElementById('year-select');
+    if (!sel) return;
+    var list = (years || []).slice().reverse();
+    sel.innerHTML = list.map(function (y) {
+      return '<option value="' + esc(y) + '"' + (String(y) === String(current) ? ' selected' : '') + '>' + esc(y) + ' 年</option>';
+    }).join('');
   }
 
   /* ============ 游戏数据库（docs/03 §16.7：库列表 + 手动添加向导） ============ */
@@ -3172,6 +3261,9 @@
     [].forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       b.addEventListener('click', function () { navigate(b.getAttribute('data-page')); });
     });
+    // 锚点直达：网址带 #import / #career 等就直接切到那一页（验证 / 分享定位用）
+    var h0 = (location.hash || '').replace('#', '');
+    if (h0 && document.getElementById('page-' + h0)) navigate(h0);
     // 只绑定带 data-src 的按钮（.src-btn 这个类在页面里也被普通按钮复用了）
     [].forEach.call(document.querySelectorAll('.src-btn[data-src]'), function (b) {
       b.addEventListener('click', function () { setSource(b.getAttribute('data-src')); });

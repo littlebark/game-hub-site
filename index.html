@@ -216,6 +216,10 @@
             <input id="ns-link" class="db-input" type="text" placeholder="③ 把复制到的授权链接粘贴到这里" autocomplete="off" spellcheck="false">
             <button class="src-btn" id="ns-finish-btn" type="button">完成登录</button>
           </div>
+          <div class="ra-actions" id="ns-pull-row" style="display:none">
+            <button class="src-btn active" id="ns-pull-btn" type="button">重新拉取游玩记录</button>
+            <span class="hint">拉最新清单 → 补按天记录 → 重建页面数据，后台一条龙，不用等它</span>
+          </div>
           <div class="ra-actions">
             <button class="src-btn" id="ns-logout-btn" type="button">解除绑定</button>
             <span class="hint">删掉本机保存的登录凭证</span>
@@ -244,6 +248,11 @@
           </div>
           <input type="file" id="ph-data-file" accept=".json,application/json" hidden>
           <input type="file" id="ph-icon-file" accept=".zip,application/zip" hidden>
+          <div class="ra-actions">
+            <input id="ph-watch-dir" class="db-input" type="text" placeholder="（可选）自动同步文件夹：把云同步工具落 json 的文件夹路径粘贴到这里">
+            <button class="src-btn" id="ph-watch-save" type="button">保存并立即检查</button>
+          </div>
+          <div id="ph-watch-msg" class="hint">设置后，每天启动时的自动同步也会检查这个文件夹：<b>使用数据</b>（.json）要比手机页已导入的新才导入；<b>图标包</b>（.zip）不用比日期，没入库过的就自动入库（本地已有的图标继续保留）。</div>
           <div id="ph-msg" class="hint"></div>
         </div>
 
@@ -1071,6 +1080,8 @@
     var loginBtn = document.getElementById('ns-login-btn');
     var finishBtn = document.getElementById('ns-finish-btn');
     var logoutBtn = document.getElementById('ns-logout-btn');
+    var pullRow = document.getElementById('ns-pull-row');
+    var pullBtn = document.getElementById('ns-pull-btn');
     var linkEl = document.getElementById('ns-link');
     var hintEl = document.getElementById('ns-login-hint');
     if (!st) return;
@@ -1122,15 +1133,18 @@
         if (d.has) {
           st.className = 'ok';
           st.textContent = '已登录（' + String(d.savedAt || '').slice(0, 10) + '）· 凭证存本机，约两年内不用再登录';
+          if (pullRow) pullRow.style.display = '';
           // 只在后台「真的在跑」时才轮询。以前这里无条件 pollImport() →
           // 完成时 tick 又调 refresh()，refresh 又 pollImport()，自己刷自己，永不停止。
           fetch('/api/nintendo/enrich-days-progress?brief=1').then(function (x) { return x.json(); })
             .then(function (p) { if (pollingNeeded(p)) pollImport(); })
             .catch(function () { });
         } else if (d.hasPending) {
+          if (pullRow) pullRow.style.display = 'none';
           st.className = 'hint';
           st.textContent = '登录链接已生成，等你在任天堂页面登录完把链接粘回来。';
         } else {
+          if (pullRow) pullRow.style.display = 'none';
           st.className = 'muted';
           st.textContent = '还没登录。点「打开任天堂登录页」，按① ② ③ 走一遍就行，只登录一次。';
         }
@@ -1191,6 +1205,23 @@
           d.removed ? '已解除绑定，本机凭证已删除。' : '本来就没保存过凭证。');
         refresh();
       } catch (e) { setMsg('err', '请求失败：' + e.message); }
+    };
+
+    /* 手动重新拉取（2026-10-21 补上的缺口）：和登录后自动导入、每日自动同步同一条流程 */
+    if (pullBtn) pullBtn.onclick = async function () {
+      pullBtn.disabled = true;
+      setMsg('hint', '正在开始后台拉取…');
+      try {
+        var r = await (await fetch('/api/nintendo/auto-import', { method: 'POST' })).json();
+        if (r.ok) {
+          setMsg('hint', '已开始后台重新拉取：① 拉游戏清单 → ② 补按天记录 → ③ 重建页面数据。不用等它，进度会显示在这里。');
+          pollImport();
+        } else {
+          setMsg('err', '没能开始：' + (r.error || '未知错误'));
+        }
+      } catch (e) { setMsg('err', '请求失败：' + e.message + '（服务器没开的话，双击 start.bat）'); }
+      pullBtn.disabled = false;
+      refresh();
     };
 
     refresh();
@@ -1322,6 +1353,61 @@
     document.getElementById('ph-icon-btn').onclick = function () { iconFile.click(); };
     dataFile.onchange = function () { upload('usage', this.files[0]); this.value = ''; };
     iconFile.onchange = function () { upload('icons', this.files[0]); this.value = ''; };
+
+    /* ---- 自动同步文件夹（2026-10-21）---- */
+    var watchDir = document.getElementById('ph-watch-dir');
+    var watchBtn = document.getElementById('ph-watch-save');
+    var watchMsg = document.getElementById('ph-watch-msg');
+
+    function sayWatch(html, cls) {
+      watchMsg.className = 'hint' + (cls ? ' ' + cls : '');
+      watchMsg.innerHTML = html || '';
+    }
+    function watchResultText(j) {
+      var lines = [];
+      var u = j && j.usage, ic = j && j.icons;
+      if (u && u.imported) {
+        var r = u.result || {};
+        lines.push('✓ 已自动导入使用数据 <b>' + u.file + '</b>：' + nf(r.apps || 0) + ' 个应用、' + nf(r.rows || 0) + ' 条记录，合计 <b>' + (r.totalHours || 0) + ' 小时</b>');
+      }
+      if (ic && ic.imported) {
+        var ir = ic.result || {};
+        lines.push('✓ 图标包已入库 <b>' + ic.file + '</b>：本次新收 <b>' + nf(ir.newCount || 0) + '</b> 个，本地共 <b>' + nf(ir.count || 0) + '</b> 个');
+      }
+      if (lines.length) return lines.join('<br>');
+      var reason = (u && u.reason) || (j && j.reason);
+      if (reason === 'empty') return '✓ 已保存。文件夹现在是空的——等云同步把手机导出的文件放进来，每天启动时的自动同步会自动处理。';
+      if (reason === 'not-newer') return '✓ 已保存。文件夹里的使用数据（' + (u.fileDate || '?') + '）不比手机页已导入的新（' + (u.currentDate || '?') + '），跳过。';
+      if (reason === 'dir-unreadable') return '✗ 文件夹打不开，检查一下路径是否正确：' + (j.error || '');
+      if (reason === 'no-valid-file') return '✗ 文件夹里有文件，但都不是合格的屏幕账本导出文件（要 .json 使用数据或 .zip 图标包）。';
+      return '✓ 已保存。';
+    }
+    watchBtn.onclick = function () {
+      var old = watchBtn.textContent;
+      watchBtn.disabled = true;
+      watchBtn.textContent = '正在检查…';
+      fetch('/api/phone/watch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: watchDir.value })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok === false) throw new Error(j.error || '保存失败');
+        sayWatch(watchResultText(j), j && j.imported ? 'ok' : '');
+        if (j && j.imported) return reloadPhoneData().then(loadStatus);
+      }).catch(function (e) {
+        sayWatch('✗ ' + e.message, 'bad');
+      }).then(function () {
+        watchBtn.disabled = false;
+        watchBtn.textContent = old;
+      });
+    };
+    // 打开页面时把已保存的路径和最近一次扫描结果带出来
+    fetch('/api/phone/watch').then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.dir) watchDir.value = j.dir;
+      if (j && j.state && j.state.lastNote && j.state.lastScanAt) {
+        sayWatch('上次自动检查：' + String(j.state.lastScanAt).slice(0, 19).replace('T', ' ') + ' · ' + j.state.lastNote);
+      }
+    }).catch(function () { /* 本地程序没运行就静默 */ });
 
     loadStatus();
   })();

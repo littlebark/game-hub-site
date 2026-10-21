@@ -19,6 +19,8 @@
   --text-0: #1d2434;      /* 主文字 */
   --text-1: #45506b;      /* 次文字 */
   --text-2: #8b94a8;      /* 弱文字 */
+  --text-3: #a9b1c2;      /* 极弱文字（时间戳 / 注释） */
+  --card: #ffffff;        /* 卡片底色 */
   --accent: #3b6fe0;      /* 主题强调色（加深以配白字） */
   --accent-2: #14b8a6;
   --danger: #e5484d;
@@ -2199,7 +2201,7 @@ select.year-select {
 
 .fc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 12px;
 }
 
@@ -2228,7 +2230,7 @@ select.year-select {
 
 .fc-card:hover .fc-img { transform: scale(1.04); }
 
-/* 时长角标：右下角，深色底白字（和图上任何颜色都能拉开对比） */
+/* 角标：右下角首次游玩日期，深色底白字（和图上任何颜色都能拉开对比） */
 .fc-min {
   position: absolute;
   right: 6px;
@@ -2698,3 +2700,16 @@ body.gh-static #panel-year,
 body.gh-static #panel-week { display: none !important; }
 body.gh-static .cn-item[data-panel="panel-year"],
 body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
+
+/* ==================== 年度统计 v2（2026-10-21 重设计） ==================== */
+.year-block { margin-top: 14px; }
+.year-block-title { font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 8px; }
+.hundred-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+.hundred-row:last-child { border-bottom: none; }
+.hundred-cover { width: 32px; height: 32px; border-radius: 7px; object-fit: cover; flex: none; background: var(--bg-3); }
+.hundred-nocover { display: inline-block; }
+.hundred-name { font-size: 13px; color: var(--text-1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hundred-meta { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.year-hot { background: var(--card); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.hot-line { font-size: 13px; color: var(--text-1); line-height: 1.7; }
+.year-note { margin-top: 14px; font-size: 12px; color: var(--text-3); line-height: 1.6; }
