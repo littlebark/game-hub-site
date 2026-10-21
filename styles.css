@@ -2518,7 +2518,8 @@ select.year-select {
   /* 页签：横向滚动不换行（换行会把列表顶下去） */
   .tabs, .tabs.sub { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
   .tabs::-webkit-scrollbar, .tabs.sub::-webkit-scrollbar { display: none; }
-  .tab { padding: 8px 13px; min-height: 38px; }
+  .tab { padding: 5px 11px; min-height: 0; font-size: 12px; gap: 5px; white-space: nowrap; flex: 0 0 auto; border-radius: 999px; }
+  .tab small { font-size: 10px; padding: 0 5px; line-height: 1.4; }
 
   /* ---------- 游戏库列表行：封面 + 右侧两行 ---------- */
   .game-row {
