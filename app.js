@@ -2697,8 +2697,8 @@
     }
 
     // 今年 100% 达成（没有就整块隐藏）
+    var cMap = coverByTitle();
     if (j.hundred && j.hundred.length) {
-      var cMap = coverByTitle();
       html += '<div class="year-block"><div class="year-block-title">今年 100% 达成 · ' + j.hundred.length + ' 款</div>' +
         j.hundred.map(function (h) {
           var cv = cMap[String(h.title).toLowerCase()] || '';
@@ -2712,10 +2712,14 @@
     // 今年最上头（任天堂专属，有按天数据且连续 ≥2 天才显示）
     var t = j.nintendo && j.nintendo.topStreak;
     if (t) {
+      var hotCv = cMap[String(t.title).toLowerCase()] || '';
       html += '<div class="year-block year-hot">' +
         '<div class="year-block-title">今年最上头 · 任天堂</div>' +
-        '<div class="hot-line"><b>' + esc(t.title) + '</b>　连续 <b>' + t.streak + '</b> 天没放下，今年共玩 <b>' +
-        formatMinutes(t.minutes) + '</b>（' + t.days + ' 天有记录）</div></div>';
+        '<div class="hot-line">' +
+          (hotCv ? '<img class="hundred-cover" src="' + esc(hotCv) + '" alt="" loading="lazy">' : '') +
+          '<span class="hot-text"><b>' + esc(t.title) + '</b>　连续 <b>' + t.streak +
+          '</b> 天没放下，今年共玩 <b>' + formatMinutes(t.minutes) + '</b>（' + t.days + ' 天有记录）</span>' +
+        '</div></div>';
     }
 
     html += '<div class="year-note">口径：手机不参与；「玩过」= 最后游玩时间在今年且总时长 ≥1 小时（Epic 无游玩时间，只按新领统计）；' +
