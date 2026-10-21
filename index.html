@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聚合游戏平台 · 个人游戏库</title>
+  <!-- 纯本地样式，无任何外部/CDN 资源 -->
+  <link rel="stylesheet" href="styles.css">
+  <script>
+  /* ==================== 页面背景（提前执行，避免刷新时闪一下默认色） ====================
+   * 设置保存在 localStorage（本机浏览器），自定义图片本体存在本机 assets/background/。
+   * 导入页「外观设置」面板负责写入；这里只负责读取并立刻应用。 */
+  window.GH_BG_PRESETS = [
+    { name: '云白',   css: 'linear-gradient(165deg, #f2f7fd, #dde8f6)' },
+    { name: '晴空蓝', css: 'linear-gradient(165deg, #d8eaff, #b7d6fa 55%, #d8f0fb)' },
+    { name: '薄荷青', css: 'linear-gradient(165deg, #ddf6ea, #b7e8d6)' },
+    { name: '暖米色', css: 'linear-gradient(165deg, #faf1de, #f0dfc0)' },
+    { name: '淡丁香', css: 'linear-gradient(165deg, #efe9fc, #d9ccf6)' },
+    { name: '纯白',   css: '#ffffff' }
+  ];
+  window.GH_BG_apply = function (setting) {
+    var el = document.documentElement;
+    el.classList.remove('has-bg', 'veil');
+    if (!setting) return;
+    if (setting.type === 'preset' && window.GH_BG_PRESETS[setting.value]) {
+      el.style.setProperty('--page-bg', window.GH_BG_PRESETS[setting.value].css);
+      el.classList.add('has-bg');
+    } else if (setting.type === 'custom' && setting.url) {
+      el.style.setProperty('--page-bg', 'url("' + setting.url + '")');
+      el.classList.add('has-bg', 'veil');   // 自定义图片加白纱，保证文字可读
+    }
+  };
+  (function () {
+    try { window.GH_BG_apply(JSON.parse(localStorage.getItem('gh_bg') || 'null')); } catch (e) {}
+  })();
+  </script>
+</head>
+<body class="gh-static">
+  <div class="app">
+    <!-- 左侧导航 -->
+    <aside class="sidebar">
+      <div class="logo"><span class="dot"></span>聚合游戏平台</div>
+      <nav>
+        <button class="nav-btn active" data-page="library">游戏库</button>
+        <button class="nav-btn" data-page="career">生涯</button>
+        <button class="nav-btn" data-page="db">游戏数据库</button>
+        <button class="nav-btn" data-page="import">导入</button>
+      </nav>
+      <div class="sidebar-foot">本地数据 · 个人游戏库<br>封面与图标存于 assets/</div>
+      <div class="src-switch">
+        <div class="src-title">数据源</div>
+        <button class="src-btn" data-src="nintendo" id="src-nintendo-btn">我的 Nintendo</button>
+        <button class="src-btn" data-src="xbox" id="src-xbox-btn">我的 Xbox</button>
+        <button class="src-btn active" data-src="steam" id="src-steam-btn">我的 Steam</button>
+        <button class="src-btn" data-src="retro" id="src-retro-btn">我的 Retro</button>
+        <button class="src-btn" data-src="epic" id="src-epic-btn">我的 Epic</button>
+        <button class="src-btn" data-src="phone" id="src-phone-btn">我的手机</button>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main">
+
+      <!-- 页面 1：游戏库（Exophase 风格） -->
+      <section id="page-library" class="page active">
+        <div class="page-head">
+          <div>
+            <div class="page-title">游戏库</div>
+            <div class="page-sub">聚合你在各平台的游戏与游玩记录</div>
+          </div>
+        </div>
+        <div id="library-hero"><!-- 最近游玩横幅：app.js 用最近一款游戏的封面做背景 --></div>
+        <div class="tabs-wrap" id="library-tabs"><!-- 数据源页签 + 平台页签，由 app.js 注入 --></div>
+        <div id="ra-overview"><!-- RA（老游戏/Retro）概览条：只在看 RA 数据时出现 --></div>
+        <div id="nintendo-overview"><!-- Nintendo 游玩日历（总日历）：只在看任天堂数据时出现，位置同 RA 概览 --></div>
+        <div class="game-list" id="library-list"><!-- 游戏行由 app.js 注入 --></div>
+      </section>
+
+      <!-- 页面 4：游戏数据库（docs/03 §16.7） -->
+      <section id="page-db" class="page">
+        <div class="page-head">
+          <div>
+            <div class="page-title">游戏数据库</div>
+            <div class="page-sub">所有收录的游戏 · 与「游戏库」（我玩过的）分开</div>
+          </div>
+          <button class="src-btn" id="db-add-btn">+ 添加游戏</button>
+        </div>
+        <div class="db-bar">
+          <input id="db-search" class="db-input" type="text" placeholder="搜游戏名 / 别名（中英文都行）" autocomplete="off">
+          <select id="db-filter" class="db-input db-select">
+            <option value="all">全部平台</option>
+            <option value="steam">仅 Steam</option>
+            <option value="xbox">仅 Xbox</option>
+            <option value="multi">跨平台（多平台同一款）</option>
+            <option value="nometadata">元数据待补全</option>
+          </select>
+          <select id="db-sort" class="db-input db-select">
+            <option value="name">按名称</option>
+            <option value="recent">按最近添加</option>
+            <option value="ach">按成就总数</option>
+          </select>
+        </div>
+        <div id="db-stats" class="db-stats"></div>
+        <div class="game-list" id="db-list"></div>
+      </section>
+
+      <!-- 页面 2：生涯统计（小黑盒风格） -->
+      <section id="page-career" class="page">
+        <div class="page-head">
+          <div>
+            <div class="page-title">生涯统计</div>
+            <div class="page-sub">跨平台游玩数据聚合</div>
+          </div>
+        </div>
+        <div id="career-content"><!-- KPI / 图表由 app.js 注入 --></div>
+      </section>
+
+      <!-- 页面 3：导入（Steam 连接） -->
+      <section id="page-import" class="page">
+        <div class="page-head">
+          <div>
+            <div class="page-title">导入</div>
+            <div class="page-sub">从外部平台同步你的游戏数据</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>连接 Steam</h3>
+          <div id="steam-status" class="muted">检测中…</div>
+          <div id="steam-panel" class="steam-panel"></div>
+        </div>
+
+        <div class="panel">
+          <h3>连接 Xbox</h3>
+          <div id="xbox-status" class="muted">检测中…</div>
+          <div id="xbox-panel" class="steam-panel"></div>
+
+          <!-- 官方游玩时长：xbl.io 拿不到，必须本人登录一次微软账号 -->
+          <div id="xbox-playtime" class="sub-block">
+            <div class="sb-title">官方游玩时长</div>
+            <div id="pt-status" class="muted">检测中…</div>
+            <div id="pt-actions"></div>
+            <div class="hint">Xbox 的游玩时长只存在于微软自己的接口，需要你本人登录一次微软账号（只做一次，之后自动续期）。
+              不是每款游戏都记录时长 —— 微软自己不记的会保持为空，这不是程序的错。</div>
+            <div id="pt-result" class="result"></div>
+          </div>
+        </div>
+
+        <!-- Epic Games：需要本人登录一次（Epic 没有面向玩家的公开 API） -->
+        <div class="panel">
+          <h3>连接 Epic Games</h3>
+          <div id="epic-status" class="muted">检测中…</div>
+          <div id="epic-actions"></div>
+          <div class="hint">Epic 不像 Steam 那样给玩家发 API Key，所以只能用「登录一次换令牌」的方式 —— 和 Xbox 时长那块一样，
+            只是多一步：登录后把页面显示的验证码粘回下面。令牌存在你本机，之后自动续期，不用反复登录。</div>
+          <div id="epic-result" class="result"></div>
+        </div>
+
+        <!-- RetroAchievements：老游戏 / Retro 成就（官方 API，填用户名即可） -->
+        <div class="panel">
+          <h3>连接 RetroAchievements（老游戏 · Retro）</h3>
+          <div id="ra-status" class="muted">检测中…</div>
+
+          <div class="ra-steps">
+            <div class="ra-step"><b>①</b> 去 <a href="https://retroachievements.org/settings" target="_blank" rel="noopener">RA 设置页</a> 的 <b>Keys</b> 里复制 <b>Web API Key</b>（一串字母数字）。它只存在你本机，不会上传给任何人。</div>
+            <div class="ra-step"><b>②</b> 下面填用户名和 Key，点「一键拉取」。整次拉取只向 RA 发 <b>3 个请求</b>，几秒钟就好。</div>
+            <div class="ra-step"><b>③</b> 想补上<b>没通关游戏</b>的时长和成就图标（RA 只在通关/精通的游戏上直接显示时长），点「补全全部」—— 每款游戏 1 个请求，之后永久存本地，第二次是秒级。</div>
+          </div>
+
+          <div class="ra-actions">
+            <input id="ra-user" class="db-input" type="text" placeholder="RA 用户名（如 littlebark）" autocomplete="off">
+            <input id="ra-key" class="db-input" type="password" placeholder="Web API Key" autocomplete="off">
+            <button class="src-btn active" id="ra-pull-btn" type="button">一键拉取</button>
+          </div>
+          <div class="ra-actions">
+            <button class="src-btn" id="ra-enrich-btn" type="button">补全全部时长 / 成就图标</button>
+            <span id="ra-enrich-name" class="hint">约 2 分钟，可以放着不管</span>
+          </div>
+
+          <details class="ra-fallback">
+            <summary>备用方案：手动选文件夹（RA 限流时用）</summary>
+            <div class="ra-step">浏览器打开
+              <a id="ra-link-home" href="https://retroachievements.org/user/littlebark" target="_blank" rel="noopener">个人主页</a> 和
+              <a id="ra-link-progress" href="https://retroachievements.org/user/littlebark/progress" target="_blank" rel="noopener">进度页</a>，
+              各自「另存为 → 网页，全部」到同一个文件夹，再点下面按钮选中它。这个方式<b>完全不联网</b>，但拿不到时长。</div>
+            <div class="ra-actions">
+              <button class="src-btn" id="ra-pick-btn" type="button">选择文件夹…</button>
+              <input type="file" id="ra-folder" webkitdirectory directory multiple hidden>
+              <span id="ra-pick-name" class="hint">还没选择</span>
+            </div>
+          </details>
+
+          <div id="ra-msg" class="hint">小提示：RA 是个小网站，所以数据全部存本地 —— 以后想更新，再点一次「一键拉取」就行。</div>
+        </div>
+
+        <!-- Nintendo：Switch 游玩记录（Nintendo Store app 同源接口，登录一次就行） -->
+        <div class="panel">
+          <h3>连接 Nintendo（Switch 游玩记录）</h3>
+          <div id="ns-status" class="muted">检测中…</div>
+
+          <div class="ra-steps">
+            <div class="ra-step"><b>①</b> 点下面按钮，在<b>任天堂官方页面</b>登录。确认页会显示「关联到 Nintendo Store」——这是对的，它和手机上的 Nintendo Store app 是同一套登录。</div>
+            <div class="ra-step"><b>②</b> 登录后出现「选择此人」页面，两种方式任选其一：<br>
+              <b>方式 A（推荐）</b>：在红色按钮上<b>右键 → 复制链接地址</b>；<br>
+              <b>方式 B</b>：直接点了按钮也行 —— 浏览器会报「无法打开 / Failed to launch」，<b>这是正常的，不是出错</b>！
+              按 <b>F12</b> → 「控制台 / Console」，找到红色那条 <code>npf…://auth</code> 开头的完整链接，<b>从 npf 开始复制到结尾</b>。<br>
+              <span class="muted">无论哪种，拿到的链接都以 npf 开头 —— 点了按钮之后再右键复制也可以。</span></div>
+            <div class="ra-step"><b>③</b> 把复制到的链接粘回下面，点「完成登录」。链接应以 <code>npf…://auth#</code> 开头 —— <b>复制成地址栏里的网址是最常见的错误</b>。</div>
+            <div class="ra-step muted">登录只做一次：凭证存在你本机（<code>.nintendoconfig.json</code>，不进 Git、不发给任何人），<b>约两年有效</b>，之后拉数据不用再登录。我们<b>只读</b>游玩记录，不会改你账号里的任何东西。</div>
+          </div>
+
+          <div class="ra-actions">
+            <button class="src-btn active" id="ns-login-btn" type="button">① 打开任天堂登录页</button>
+            <span id="ns-login-hint" class="hint">会新开一个标签页</span>
+          </div>
+          <div class="ra-actions">
+            <input id="ns-link" class="db-input" type="text" placeholder="③ 把复制到的授权链接粘贴到这里" autocomplete="off" spellcheck="false">
+            <button class="src-btn" id="ns-finish-btn" type="button">完成登录</button>
+          </div>
+          <div class="ra-actions">
+            <button class="src-btn" id="ns-logout-btn" type="button">解除绑定</button>
+            <span class="hint">删掉本机保存的登录凭证</span>
+          </div>
+
+          <div id="ns-msg" class="hint">这一步只负责授权。登录成功后我们再一起看能拿到哪些数据，再决定怎么存、怎么展示。</div>
+        </div>
+
+        <div class="panel">
+          <h3>导入手机使用数据（屏幕账本）</h3>
+          <div id="ph-status" class="muted">检测中…</div>
+
+          <div class="ra-steps">
+            <div class="ra-step"><b>①</b> 手机上打开「屏幕账本」→ 导出<b>使用数据</b>（.json）和<b>图标包</b>（.zip），传到电脑（微信文件传输助手、数据线都行）。</div>
+            <div class="ra-step"><b>②</b> 先点下面第一个按钮选 <b>.json</b>，再点第二个按钮选 <b>.zip</b>。两个都导入后，图标才齐全（名字来自数据文件，图标来自图标包）。</div>
+            <div class="ra-step muted">手机没有联网接口，所以每次都要手动导一次；每次都是<b>整份替换</b>成手机里最新的数据（旧数据自动留 5 份备份在 <code>data/phone/backup</code>）。每个 App 都能在详情页单独「隐藏」，<b>隐藏后列表和统计都不算它</b>。只剩包名、没有应用名的条目（已卸载 / 系统隐藏应用）会<b>自动过滤</b>，不用你处理。</div>
+          </div>
+
+          <div class="ra-actions">
+            <button class="src-btn active" id="ph-data-btn" type="button">① 导入使用数据（.json）</button>
+            <span id="ph-data-name" class="hint">还没导入</span>
+          </div>
+          <div class="ra-actions">
+            <button class="src-btn" id="ph-icon-btn" type="button">② 导入图标包（.zip）</button>
+            <span id="ph-icon-name" class="hint">还没导入</span>
+          </div>
+          <input type="file" id="ph-data-file" accept=".json,application/json" hidden>
+          <input type="file" id="ph-icon-file" accept=".zip,application/zip" hidden>
+          <div id="ph-msg" class="hint"></div>
+        </div>
+
+        <div class="panel">
+          <h3>外观设置</h3>
+          <div class="muted">页面背景：选一个内置底色，或导入你喜欢的图片（图片保存在本机 assets/background/，不会上传）。</div>
+          <div id="bg-swatches" class="bg-swatches"><!-- 内置底色由脚本注入 --></div>
+          <div class="bg-actions">
+            <button class="src-btn active" id="bg-upload-btn" type="button">导入背景图片…</button>
+            <button class="src-btn" id="bg-reset" type="button">恢复默认背景</button>
+          </div>
+          <input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+          <div id="bg-msg" class="hint">提示：选浅一点的图片效果最好，导入后自动加一层白纱保证文字清晰。</div>
+        </div>
+
+        <div class="panel" id="assets-sync-panel">
+          <h3>图片补齐（为线上版做准备）</h3>
+          <div id="assets-sync-status" class="muted">检测中…</div>
+          <div class="ra-actions">
+            <button class="src-btn" id="assets-sync-btn" type="button">立即补齐图片</button>
+            <span class="hint">Steam / Xbox 每次导入成功后会自动开始；这个按钮是手动补跑入口，平时不用点</span>
+          </div>
+          <div class="ra-steps">
+            <div class="ra-step muted">作用：把所有「玩过的」游戏的成就图标和缺的封面提前下载到本机。下载完整后，发布到网上的版本才能不依赖你电脑开机也能显示全部图片。</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 经典 script 标签，按依赖顺序加载；不使用 type="module"、不使用 import -->
+  <!-- 线上只读版开关：发布脚本会把 false 改成 true（隐藏导入/隐藏等写功能，只留浏览） -->
+  <script>window.GH_STATIC = true;</script>
+  <!-- 每拉取一个官方平台，就单独生成一份 data_<平台>.js；各平台互不合并，按自己的规则展示。
+       文件不存在时服务器会返回空桩（内容为 null），页面显示引导。 -->
+  <script src="data_steam.js"></script>
+  <script src="data_xbox.js"></script>
+  <!-- RA（RetroAchievements）：由本地解析「另存为」网页生成，按主机拆成 ra-nes / ra-gba … 多个平台 -->
+  <script src="data_ra.js"></script>
+  <!-- Epic：由本地程序用 Epic 官方（社区逆向）游戏库 / 时长 / 商品接口生成 -->
+  <script src="data_epic.js"></script>
+  <!-- Nintendo：一个数据源下挂 nintendo-switch / nintendo-switch2 / nintendo-3ds 三台主机 -->
+  <script src="data_nintendo.js"></script>
+  <!-- Nintendo 游玩日历：每款按天记录 + 全平台按天汇总（总日历用） -->
+  <script src="data_nintendo_calendar.js"></script>
+  <!-- 手机（屏幕账本）：手动导入 json/zip 后由本地程序生成，每次整份替换 -->
+  <script src="data_phone.js"></script>
+  <script src="data_xbox_ach.js"></script>
+  <!-- platform_fields.js = 各平台特有字段登记表（新增平台时填这里） -->
+  <script src="platform_fields.js"></script>
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    var panel = document.getElementById('steam-panel');
+    var statusEl = document.getElementById('steam-status');
+
+    function render(cfg) {
+      statusEl.textContent = cfg.hasKey ? ('已保存 Key' + (cfg.lastUser ? '（账号 ' + cfg.lastUser + '）' : '')) : '尚未保存 Key';
+      if (cfg.hasKey) {
+        panel.innerHTML =
+          '<p class="ok">已配置 Steam API Key（仅存于本机）。</p>' +
+          '<button class="src-btn active" id="btn-pull">重新拉取我的 Steam 数据</button>' +
+          '<button class="src-btn" id="btn-renorm">重新整理本地数据（不联网·秒级）</button>' +
+          '<button class="src-btn" id="btn-ping">网络诊断</button>' +
+          '<button class="src-btn" id="btn-edit">修改 Key / 账号</button>' +
+          '<div class="hint">拉取后，点左下角「我的 Steam」即可查看。拉取失败时先点「网络诊断」。<br>' +
+          '<b>两个按钮的区别</b>：「重新拉取」= 联网向 Steam 重新要一次（慢，几分钟）；' +
+          '「重新整理」= 只用本机已存的数据重算（<b>不联网</b>，几秒），适合改了显示规则之后刷新。</div>' +
+          '<div id="steam-result" class="result"></div>';
+        document.getElementById('btn-pull').onclick = pull;
+        document.getElementById('btn-renorm').onclick = reNorm;
+        document.getElementById('btn-ping').onclick = ping;
+        document.getElementById('btn-edit').onclick = function () { render({ hasKey: false }); };
+      } else {
+        panel.innerHTML =
+          '<p>首次使用需要你的 Steam Web API Key（免费，steamcommunity.com/dev/apikey 申请，填任意域名）。</p>' +
+          '<label>API Key（必填）</label><input id="in-key" type="text" placeholder="粘贴 Key" autocomplete="off">' +
+          '<label>你的 Steam 账号（必填）</label><input id="in-vanity" type="text" placeholder="直接粘贴个人资料网址即可" autocomplete="off">' +
+          '<div class="hint">怎么找？打开 Steam 客户端 → 右上角头像 → 「查看个人资料」→ 把顶部网址<b>整段复制粘贴</b>到上面即可。<br>' +
+          '两种格式都支持：steamcommunity.com/<b>id/某某</b>/ 或 steamcommunity.com/<b>profiles/7656119…</b>/</div>' +
+          '<button class="src-btn active" id="btn-save">保存并拉取</button>' +
+          '<div class="hint">Key 只保存在你本机，不会上传到任何地方。</div>' +
+          '<div id="steam-result" class="result"></div>';
+        document.getElementById('btn-save').onclick = saveAndPull;
+      }
+    }
+
+    function showResult(data) {
+      var r = document.getElementById('steam-result'); if (!r) return;
+      if (data.ok) {
+        var html = '<div class="ok">拉取成功：' + data.count + ' 款游戏</div><ul class="rl">';
+        (data.games || []).slice(0, 8).forEach(function (g) {
+          html += '<li>' + g.title + ' · ' + Math.round(g.minutes / 60) + 'h · 成就 ' + g.achUnlocked + '/' + g.achTotal + '</li>';
+        });
+        html += '</ul><button class="src-btn active" id="btn-view">查看我的 Steam</button>';
+        r.innerHTML = html;
+        document.getElementById('btn-view').onclick = function () { if (window.__applySteamData) window.__applySteamData(data.unified); };
+      } else {
+        r.innerHTML = '<div class="err">失败：' + (data.error || '未知错误') +
+          (data.detail ? '<br><span class="muted" style="font-size:12px">技术细节：' + data.detail + '</span>' : '') +
+          '<br><span class="muted">建议：点上方「网络诊断」检查本机到 Steam 的连通性。</span></div>';
+      }
+    }
+
+    async function saveAndPull() {
+      var key = document.getElementById('in-key').value.trim();
+      var vanity = document.getElementById('in-vanity').value.trim();
+      if (!key) { alert('请先粘贴 API Key'); return; }
+      if (!vanity) { alert('请填写你的 Steam 账号：直接把个人资料网址整段粘贴进来即可（见下方说明）'); return; }
+      await fetch('/api/steam/savekey', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key, vanity: vanity }) });
+      pull();
+    }
+    async function pull() {
+      var r = document.getElementById('steam-result'); if (r) r.innerHTML = '拉取中…';
+      try {
+        var res = await fetch('/api/steam/pull', { method: 'POST' });
+        var data = await res.json();
+        showResult(data);
+      } catch (e) { if (r) r.innerHTML = '<div class="err">请求失败：' + e.message + '</div>'; }
+    }
+    async function reNorm() {
+      var r = document.getElementById('steam-result'); if (r) r.innerHTML = '重新整理中（不联网，几秒）…';
+      try {
+        var res = await fetch('/api/steam/renormalize', { method: 'POST' });
+        var d = await res.json();
+        if (!d.ok) {
+          r.innerHTML = '<div class="err">整理失败：' + (d.error || '未知错误') + '</div>';
+          return;
+        }
+        var a = d.assets || {};
+        r.innerHTML = '<div class="ok">整理完成：' + d.count + ' 款游戏（数据源：本地 ' + d.source + '）</div>' +
+          '<div class="hint">资产：新下载 ' + (a.ok || 0) + '，跳过 ' + (a.skip || 0) + '，失败 ' + (a.fail || 0) + '</div>' +
+          '<ul class="rl"></ul><button class="src-btn active" id="btn-view">查看我的 Steam</button>';
+        document.getElementById('btn-view').onclick = function () { if (window.__applySteamData) window.__applySteamData(d.unified); };
+      } catch (e) { if (r) r.innerHTML = '<div class="err">请求失败：' + e.message + '</div>'; }
+    }
+    async function ping() {
+      var r = document.getElementById('steam-result');
+      if (r) r.innerHTML = '诊断中（最多 15 秒）…';
+      try {
+        var res = await fetch('/api/steam/ping');
+        var d = await res.json();
+        if (!r) return;
+        if (d.ok) {
+          r.innerHTML = '<div class="ok">✅ 网络正常！已连上 Steam 服务器（耗时 ' + d.latencyMs + 'ms）' +
+            (d.proxy ? '，走的代理：' + d.proxy : '，直连') + '。可以直接点「重新拉取」。</div>';
+        } else {
+          r.innerHTML = '<div class="err">❌ 连不上 Steam（' + (d.error || '未知') + '）' +
+            (d.detail ? '<br><span class="muted" style="font-size:12px">技术细节：' + d.detail + '</span>' : '') +
+            (d.proxy ? '<br>尝试过的代理：' + d.proxy : '<br>未检测到可用代理。') +
+            '<br><span class="muted">解决办法：开你的代理/加速器软件（如 Clash、v2rayN 等，开「系统代理」模式），然后重新点「网络诊断」。</span></div>';
+        }
+      } catch (e) { if (r) r.innerHTML = '<div class="err">诊断请求失败：' + e.message + '</div>'; }
+    }
+
+    fetch('/api/steam/status').then(function (x) { return x.json(); }).then(render).catch(function () { render({ hasKey: false }); });
+  })();
+  </script>
+
+  <script>
+  /* ==================== Xbox 连接面板 ====================
+   * 与 Steam 的关键区别：Xbox 的玩家代号/成就进度是**公开数据**，
+   * 所以日常只需要填 gamertag；Key 是本程序的凭证，填一次存本机。
+   */
+  (function () {
+    var panel = document.getElementById('xbox-panel');
+    var statusEl = document.getElementById('xbox-status');
+    var ptBox = document.getElementById('xbox-playtime');
+
+    /* ---- 官方游玩时长（需要本人登录一次微软账号） ---- */
+    function fmtTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2)
+        + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+
+    async function renderPlaytime() {
+      if (!ptBox) return;
+      var s;
+      try { s = await (await fetch('/api/xbox/oauth/status')).json(); } catch (e) { return; }
+      var st = document.getElementById('pt-status');
+      var ac = document.getElementById('pt-actions');
+      if (!st || !ac) return;
+
+      if (s.loggedIn) {
+        st.innerHTML = '<span class="ok">已登录：' + (s.gamertag || 'Xbox 账号') + '</span>'
+          + (s.loggedInAt ? '<span class="muted">　登录于 ' + fmtTime(s.loggedInAt) + '</span>' : '')
+          + (s.lastPullAt ? '<span class="muted">　上次拉取 ' + fmtTime(s.lastPullAt) + '</span>' : '');
+        ac.innerHTML = '<button class="src-btn active" id="pt-pull">刷新全部游戏时长</button>'
+          + '<button class="src-btn" id="pt-pull-miss">只补还没有时长的</button>'
+          + '<button class="src-btn" id="pt-out">退出登录</button>';
+        document.getElementById('pt-pull').onclick = function () { doPull(false); };
+        document.getElementById('pt-pull-miss').onclick = function () { doPull(true); };
+        document.getElementById('pt-out').onclick = async function () {
+          if (!confirm('退出后要重新登录才能再刷新时长。确定退出？')) return;
+          await fetch('/api/xbox/oauth/logout', { method: 'POST' });
+          renderPlaytime();
+        };
+      } else if (s.phase === 'waiting') {
+        st.className = 'muted';
+        st.textContent = '等待你在浏览器里完成登录…（链接 5 分钟内有效）';
+        ac.innerHTML = '<a class="src-btn active" href="' + s.authUrl + '" target="_blank" rel="noopener">浏览器没弹窗？点这里手动打开</a>';
+        setTimeout(renderPlaytime, 3000);
+      } else {
+        st.className = 'muted';
+        st.textContent = '尚未登录微软账号';
+        ac.innerHTML = '<button class="src-btn active" id="pt-login">登录微软账号（打开浏览器）</button>'
+          + (s.error ? '<div class="err">' + s.error + '</div>' : '');
+        var lb = document.getElementById('pt-login');
+        if (lb) lb.onclick = async function () {
+          lb.disabled = true; lb.textContent = '正在打开浏览器…';
+          try {
+            var r = await (await fetch('/api/xbox/oauth/start', { method: 'POST' })).json();
+            if (r && r.authUrl) window.open(r.authUrl, '_blank');
+          } catch (e) { /* ignore */ }
+          renderPlaytime();
+        };
+      }
+    }
+
+    async function doPull(onlyMissing) {
+      var r = document.getElementById('pt-result');
+      if (r) r.innerHTML = '<div class="muted">正在向微软查询每款游戏的时长，大约 1～2 分钟，别关页面…</div>';
+      var btns = ptBox.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) btns[i].disabled = true;
+      try {
+        var res = await fetch('/api/xbox/playtime/pull', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 0, onlyMissing: !!onlyMissing }),
+        });
+        var d = await res.json();
+        if (r) {
+          if (d.ok) {
+            r.innerHTML = '<div class="ok">拿到官方时长 ' + d.got + ' 款'
+              + (d.noStat ? '，' + d.noStat + ' 款微软本身不记录时长' : '') + '。</div>'
+              + '<div class="hint">' + (d.hint || '') + '</div>';
+            if (window.__refreshLibrary) window.__refreshLibrary();
+          } else {
+            r.innerHTML = '<div class="err">失败：' + (d.error || '未知错误') + '</div>';
+          }
+        }
+      } catch (e) {
+        if (r) r.innerHTML = '<div class="err">请求失败：' + e.message + '</div>';
+      }
+      renderPlaytime();
+    }
+
+    function render(cfg) {
+      statusEl.textContent = cfg.hasKey
+        ? ('已保存 Key' + (cfg.lastGamertag ? '（玩家代号 ' + cfg.lastGamertag + '）' : ''))
+        : '尚未保存 Key';
+      if (cfg.hasKey) {
+        panel.innerHTML =
+          '<p class="ok">已配置 Xbox Key（仅存于本机）。</p>' +
+          '<label>你的玩家代号（gamertag，可换人查）</label>' +
+          '<input id="xb-gt" type="text" placeholder="如 Major Nelson" autocomplete="off">' +
+          '<button class="src-btn active" id="xb-pull">拉取我的 Xbox 数据</button>' +
+          '<div class="hint">Xbox 公开接口提供：玩家分数、最近玩过、成就进度；' +
+          '<b>不提供游戏总时长</b>（平台限制，记为 0）。成就明细在你打开某款游戏时按需获取。</div>' +
+          '<div id="xb-result" class="result"></div>';
+        document.getElementById('xb-pull').onclick = pull;
+      } else {
+        panel.innerHTML =
+          '<p>Xbox 走 OpenXBL（xbl.io）网关。Key 在 xbl.io 用微软账号登录后即可免费获取（免费档 150 次/小时）。</p>' +
+          '<label>Xbox Key（只需填一次）</label><input id="xb-key" type="text" placeholder="粘贴 xbl.io 的 Key" autocomplete="off">' +
+          '<label>你的玩家代号（gamertag）</label>' +
+          '<input id="xb-gt" type="text" placeholder="如 Major Nelson，或粘贴个人资料网址" autocomplete="off">' +
+          '<div class="hint">填了 Key 之后，以后只改玩家代号就能换账号拉取，Key 不用再填。</div>' +
+          '<button class="src-btn active" id="xb-save">保存并拉取</button>' +
+          '<div id="xb-result" class="result"></div>';
+        document.getElementById('xb-save').onclick = saveAndPull;
+      }
+    }
+
+    /* 时长同步结果的说明文字（导入时会一起更新，不用再单独点） */
+    function playtimeLine(pt) {
+      if (!pt) return '';
+      if (pt.skipped && pt.reason === 'not-logged-in') {
+        return '<div class="hint">时长未更新：还没登录微软账号 —— 在下面「官方游玩时长」里登录一次，下次导入就会自动带上了。</div>';
+      }
+      if (pt.skipped) {
+        return '<div class="err">时长更新失败：' + (pt.error || '未知错误') + '（游戏清单已正常导入）</div>';
+      }
+      if (pt.unauthorized) {
+        return '<div class="err">时长未更新：微软登录已失效，请在下面「官方游玩时长」重新登录。</div>';
+      }
+      return '<div class="ok">时长同步：拿到 ' + pt.got + ' 款官方时长'
+        + (pt.noStat ? '，' + pt.noStat + ' 款微软本身不记录' : '') + '</div>';
+    }
+
+    function showResult(data) {
+      var r = document.getElementById('xb-result'); if (!r) return;
+      if (data.ok) {
+        r.innerHTML = '<div class="ok">拉取成功：' + data.count + ' 款游戏</div>' +
+          playtimeLine(data.playtime) +
+          '<div class="hint">已合并进你的游戏库，去「游戏库」页查看。</div>' +
+          '<button class="src-btn active" id="xb-view">查看我的游戏库</button>';
+        document.getElementById('xb-view').onclick = function () {
+          if (window.__applyPlatformData) window.__applyPlatformData('xbox', data.unified);
+        };
+        renderPlaytime();   // 时长已顺带更新，刷新下方「官方游玩时长」的登录/上次拉取状态
+      } else {
+        r.innerHTML = '<div class="err">失败：' + (data.error || '未知错误') +
+          (data.detail ? '<br><span class="muted" style="font-size:12px">技术细节：' + data.detail + '</span>' : '') + '</div>';
+      }
+    }
+
+    async function saveAndPull() {
+      var key = document.getElementById('xb-key').value.trim();
+      var gt = document.getElementById('xb-gt').value.trim();
+      if (!key) { alert('请先粘贴 Xbox Key'); return; }
+      if (!gt) { alert('请填写你的玩家代号（gamertag）'); return; }
+      await fetch('/api/xbox/savekey', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key, gamertag: gt }) });
+      render({ hasKey: true });
+    }
+
+    async function pull() {
+      var r = document.getElementById('xb-result');
+      if (r) r.innerHTML = '拉取中…（会顺带更新官方游玩时长，第一次稍慢，别关页面）';
+      var gtEl = document.getElementById('xb-gt');
+      var gt = gtEl && gtEl.value.trim();
+      try {
+        var res = await fetch('/api/xbox/pull', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gamertag: gt || undefined }),
+        });
+        showResult(await res.json());
+      } catch (e) { if (r) r.innerHTML = '<div class="err">请求失败：' + e.message + '</div>'; }
+    }
+
+    fetch('/api/xbox/status').then(function (x) { return x.json(); }).then(render).catch(function () { render({ hasKey: false }); });
+    renderPlaytime();
+  })();
+  </script>
+
+  <script>
+  /* ==================== Epic 连接面板 ====================
+   * 和 Xbox 的区别：Xbox 是「点一下 → 浏览器登录 → 自动回调回来」全自动；
+   * Epic 禁止这个启动器 client 带自定义回调地址，所以只能用 legendary（开源启动器）那套
+   * 手工流程：登录后 Epic 页面自己把 authorizationCode 显示出来，用户粘回来。
+   * 这串码只能用一次、几分钟就失效 —— 所以界面上明确提醒「拿到就赶紧粘」。
+   */
+  (function () {
+    var st = document.getElementById('epic-status');
+    var ac = document.getElementById('epic-actions');
+    var rs = document.getElementById('epic-result');
+    if (!st || !ac) return;
+
+    function fmtTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2)
+        + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+
+    async function render() {
+      var s;
+      try { s = await (await fetch('/api/epic/oauth/status')).json(); } catch (e) { return; }
+
+      if (s.loggedIn) {
+        st.innerHTML = '<span class="ok">已登录：' + (s.displayName || 'Epic 账号') + '</span>'
+          + (s.savedAt ? '<span class="muted">　登录于 ' + fmtTime(s.savedAt) + '</span>' : '');
+        ac.innerHTML = '<button class="src-btn active" id="ep-pull">拉取我的 Epic 数据</button>'
+          + '<button class="src-btn" id="ep-probe">看看能拿到哪些数据</button>'
+          + '<button class="src-btn" id="ep-out">退出登录</button>';
+        document.getElementById('ep-out').onclick = async function () {
+          if (!confirm('退出后要重新登录才能再拉 Epic 数据。确定退出？')) return;
+          await fetch('/api/epic/oauth/logout', { method: 'POST' });
+          render();
+        };
+        document.getElementById('ep-probe').onclick = probe;
+        document.getElementById('ep-pull').onclick = pull;
+      } else {
+        st.className = 'muted';
+        st.textContent = '尚未登录 Epic 账号';
+        ac.innerHTML =
+          '<button class="src-btn active" id="ep-login">① 打开 Epic 登录页（浏览器）</button>' +
+          '<div id="ep-step2" style="display:none;margin-top:10px">' +
+          '<label>② 把页面显示的验证码粘进来（整段 JSON 也行，程序自己会挑）</label>' +
+          '<textarea id="ep-code" rows="3" placeholder=\'形如 {"authorizationCode":"5b9398..."} 或直接粘那串 32 位码\' ' +
+          'style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px"></textarea>' +
+          '<button class="src-btn active" id="ep-submit">完成登录</button>' +
+          '<div class="hint">这串码<b>只能用一次、几分钟就过期</b>，拿到后尽快粘回来。如果提示已失效，重新点第 ① 步再来一次。</div>' +
+          '</div>';
+        document.getElementById('ep-login').onclick = async function () {
+          var b = document.getElementById('ep-login');
+          b.disabled = true; b.textContent = '正在打开浏览器…';
+          try {
+            var r = await (await fetch('/api/epic/oauth/start', { method: 'POST' })).json();
+            if (r && r.manualUrl) window.open(r.manualUrl, '_blank');
+          } catch (e) { /* ignore */ }
+          b.textContent = '① 重新打开 Epic 登录页';
+          b.disabled = false;
+          document.getElementById('ep-step2').style.display = '';
+        };
+        document.getElementById('ep-submit').onclick = submit;
+        if (s.error) rs.innerHTML = '<div class="err">' + s.error + '</div>';
+      }
+    }
+
+    async function submit() {
+      var v = (document.getElementById('ep-code') || {}).value || '';
+      if (!v.trim()) { alert('请先粘贴验证码'); return; }
+      var b = document.getElementById('ep-submit');
+      b.disabled = true; b.textContent = '正在登录…';
+      if (rs) rs.innerHTML = '<div class="muted">正在用验证码换令牌…</div>';
+      try {
+        var res = await fetch('/api/epic/oauth/code', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: v.trim() }),
+          signal: (window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(90000) : undefined,
+        });
+        var d = await res.json();
+        if (d.ok) {
+          if (rs) rs.innerHTML = '<div class="ok">✅ 登录成功：' + (d.displayName || d.accountId || 'Epic 账号')
+            + '<br><span class="muted">正在自动导入你的 Epic 游戏（先拉清单和时长，再后台补封面/资料）…</span></div>';
+          // 无人值守（用户 2026-10-20 定）：登录成功即自动拉取，拉完自动转后台补全，不用再点任何按钮
+          render().then(function () {
+            var pb = document.getElementById('ep-pull');
+            if (pb && !pb.disabled) pb.click();
+          });
+        } else {
+          if (rs) rs.innerHTML = '<div class="err">' + (d.error || '登录失败')
+            + '<br><span class="muted">多半是验证码过期了 —— 重新点第 ① 步拿一个新的。</span></div>';
+        }
+      } catch (e) {
+        if (rs) rs.innerHTML = '<div class="err">请求失败：' + e.message + '</div>';
+      }
+      b.disabled = false; b.textContent = '完成登录';
+    }
+
+    /* ---------- 拉取我的 Epic 数据 ----------
+     * 第一次要点时间：655 款游戏每一款都要去 Epic 商城问一次真名和封面地址，
+     * 问过一次就缓存在本机，以后再拉明显更快。 */
+    async function pull() {
+      var b = document.getElementById('ep-pull');
+      if (!b) return;
+      b.disabled = true;
+      b.textContent = '正在拉取…';
+      if (rs) rs.innerHTML = '<div class="muted">正在拉取游戏清单和游玩时长…（通常十几秒）</div>';
+      try {
+        var res = await fetch('/api/epic/pull', { method: 'POST' });
+        var d = await res.json();
+        b.disabled = false;
+        b.textContent = '拉取我的 Epic 数据';
+        if (!d.ok) {
+          if (rs) rs.innerHTML = '<div class="err">拉取失败：' + (d.error || '未知错误') +
+            '<br><span class="muted">如果是提示登录过期，重新登录一次就好；如果是连不上服务器，检查网络后过一会儿再试。</span></div>';
+          return;
+        }
+        if (window.__applyPlatformData) window.__applyPlatformData('epic', d.unified);
+        if (rs) rs.innerHTML = '<div class="ok">✅ 拿到 <b>' + (d.count || 0) + '</b> 款游戏，其中 <b>' +
+          (d.withPlaytime || 0) + '</b> 款有游玩时长</div>';
+        render();
+        // 无人值守（用户 2026-10-20 定）：清单拉完立刻转后台补封面/真名，导入一步到位，不留单独点的按钮
+        startEnrich();
+      } catch (e) {
+        b.disabled = false;
+        b.textContent = '拉取我的 Epic 数据';
+        if (rs) rs.innerHTML = '<div class="err">请求失败：' + e.message + '（服务器没开的话，双击 start.bat）</div>';
+      }
+    }
+
+    /* ---------- 后台补全封面 + 真名（不阻塞同步；前端轮询进度） ---------- */
+    var enriching = false;
+    async function startEnrich() {
+      if (enriching) return;
+      enriching = true;
+      if (rs) rs.innerHTML = '<div class="muted">正在后台补全封面与资料（每 4 个并发，慢慢跑，你可以关掉这页）…</div>';
+      try {
+        var d = await (await fetch('/api/epic/enrich', { method: 'POST' })).json();
+        if (!d.ok && d.reason !== 'running') {
+          if (rs) rs.innerHTML = '<div class="err">启动失败：' + (d.error || '未知错误') + '</div>';
+          enriching = false; return;
+        }
+      } catch (e) {
+        enriching = false;
+        if (rs) rs.innerHTML = '<div class="err">请求失败：' + e.message + '</div>';
+        return;
+      }
+      var timer = setInterval(async function () {
+        try {
+          var p = await (await fetch('/api/epic/enrich-progress')).json();
+          if (rs) rs.innerHTML = '<div class="muted">补全中：' + (p.done || 0) + ' / ' + (p.total || 0) +
+            '　真名+' + (p.namesNew || 0) + '　封面 新' + (p.coversNew || 0) + '/跳过' + (p.coversSkip || 0) + '/失败' + (p.coversFail || 0) +
+            (p.catalogFailed ? '　查不到资料 ' + p.catalogFailed : '') + '</div>';
+          if (p.state === 'done' || p.state === 'failed') {
+            clearInterval(timer); enriching = false;
+            if (p.state === 'failed') { if (rs) rs.innerHTML = '<div class="err">补全中断：' + (p.error || '未知错误') + '</div>'; return; }
+            if (rs) rs.innerHTML = '<div class="ok">补全完成：' + (p.done || 0) + ' 款　真名+' + (p.namesNew || 0) +
+              '　封面 新' + (p.coversNew || 0) + ' 张、跳过' + (p.coversSkip || 0) +
+              (p.catalogFailed ? '　' + p.catalogFailed + ' 款查不到资料（已自动隐藏）' : '') +
+              '<br><br><button class="src-btn active" id="ep-view">去看我的 Epic 游戏</button></div>';
+            var v = document.getElementById('ep-view');
+            if (v) v.onclick = function () {
+              var nav = document.querySelector('.nav-btn[data-page="library"]');
+              if (nav) nav.click();
+            };
+            // 自动把最新数据刷进当前页面
+            fetch('/data_epic.js?t=' + Date.now()).then(function (x) { return x.text(); }).then(function (t) {
+              var mm = t.match(/window\.GAME_DATA_EPIC\s*=\s*([\s\S]*?);\s*$/m);
+              if (mm && window.__applyPlatformData) { try { window.__applyPlatformData('epic', JSON.parse(mm[1])); } catch (e) {} }
+            }).catch(function () {});
+            render();
+          }
+        } catch (e) { /* 轮询失败下一轮再试 */ }
+      }, 2000);
+    }
+
+    /* 探测：只报告「能拿到什么」，不落盘 —— 用来决定要不要正式接 Epic */
+    async function probe() {
+      if (rs) rs.innerHTML = '<div class="muted">正在探测…大约 10～20 秒</div>';
+      try {
+        var d = await (await fetch('/api/epic/probe')).json();
+        if (!rs) return;
+        if (!d.ok) { rs.innerHTML = '<div class="err">探测失败：' + (d.error || '未知') + '</div>'; return; }
+        var L = d.library || {}, P = d.playtime || {}, A = d.achievements || [];
+        var achLine = A.map(function (x) {
+          return x.error ? (x.endpoint + ' → 失败：' + x.error)
+            : (x.endpoint + ' → HTTP ' + x.status + '，' + (x.records ? x.records + ' 条记录' : '无数据'));
+        }).join('<br>');
+        rs.innerHTML =
+          '<div class="ok">账号：' + (d.account.displayName || d.account.accountId) + '</div>' +
+          '<div class="hint">' +
+          '<b>游戏库</b>：' + (L.ok ? L.count + ' 条记录' + (L.hasCoverInMetadata ? '，自带封面 ✅' : '，无封面') : '拉取失败 ' + (L.status || L.error || '')) + '<br>' +
+          '<b>游玩时长</b>：' + (P.ok ? P.count + ' 款有记录，合计 ' + P.totalHours + ' 小时' : '拿不到（' + (P.status || '') + '）') + '<br>' +
+          '<b>成就</b>：<br>' + (achLine || '未探测') +
+          '</div>';
+      } catch (e) {
+        if (rs) rs.innerHTML = '<div class="err">探测失败：' + e.message + '</div>';
+      }
+    }
+
+    render();
+  })();
+  </script>
+
+  <script>
+  /* ==================== 外观设置（页面背景） ====================
+   * 内置底色 = 纯本地；自定义图片 = 上传到本机 assets/background/ 再引用。
+   * 选择本身存 localStorage，刷新立即生效（head 里的脚本负责应用）。 */
+  (function () {
+    var wrap = document.getElementById('bg-swatches');
+    var msg = document.getElementById('bg-msg');
+    if (!wrap) return;
+
+    function current() {
+      try { return JSON.parse(localStorage.getItem('gh_bg') || 'null'); } catch (e) { return null; }
+    }
+    function save(s) {
+      localStorage.setItem('gh_bg', JSON.stringify(s));
+      window.GH_BG_apply(s);
+      paint();
+    }
+    function paint() {
+      var cur = current();
+      var html = '';
+      window.GH_BG_PRESETS.forEach(function (p, i) {
+        var on = cur && cur.type === 'preset' && cur.value === i;
+        html += '<button class="bg-swatch' + (on ? ' on' : '') + '" data-i="' + i +
+                '" title="' + p.name + '" style="background:' + p.css + '"><span>' + p.name + '</span></button>';
+      });
+      wrap.innerHTML = html;
+      [].forEach.call(wrap.querySelectorAll('.bg-swatch'), function (b) {
+        b.onclick = function () { save({ type: 'preset', value: Number(b.getAttribute('data-i')) }); };
+      });
+    }
+
+    document.getElementById('bg-upload-btn').onclick = function () {
+      document.getElementById('bg-file').click();
+    };
+    document.getElementById('bg-file').onchange = async function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      msg.textContent = '导入中…';
+      try {
+        var buf = await f.arrayBuffer();
+        var res = await fetch('/api/background', {
+          method: 'POST',
+          headers: { 'Content-Type': f.type || 'application/octet-stream' },
+          body: buf,
+        });
+        var d = await res.json();
+        if (!d.ok) { msg.textContent = '导入失败：' + (d.error || '未知错误'); return; }
+        save({ type: 'custom', url: d.url });
+        msg.textContent = '背景已更换（图片保存在本机 assets/background/）。';
+      } catch (e) { msg.textContent = '导入失败：' + e.message; }
+      this.value = '';
+    };
+    document.getElementById('bg-reset').onclick = function () {
+      localStorage.removeItem('gh_bg');
+      window.GH_BG_apply(null);
+      paint();
+      msg.textContent = '已恢复默认背景。';
+    };
+    paint();
+  })();
+  </script>
+
+  <script>
+  /* ==================== RetroAchievements 导入面板 ====================
+   * 2026-10-19 改成官方 API 方案（用户拍板）：填用户名 + 自己的 Web API Key → 一键拉取。
+   *   · 全量拉取只发 3 个请求（账号 / 全部游戏 / 徽章），之后全走本地缓存；
+   *   · 「补全全部」按每款游戏 1 个请求补时长 + 成就图标 + 发售日/厂商/类型，后台跑、前端轮询进度；
+   *   · 底下「手动选文件夹」是不联网的备用方案（本地解析另存的网页），随时可用。
+   */
+  (function () {
+    var statusEl = document.getElementById('ra-status');
+    var pickBtn = document.getElementById('ra-pick-btn');
+    var fileInput = document.getElementById('ra-folder');
+    var nameEl = document.getElementById('ra-pick-name');
+    var msgEl = document.getElementById('ra-msg');
+    var userEl = document.getElementById('ra-user');
+    var keyEl = document.getElementById('ra-key');
+    var pullBtn = document.getElementById('ra-pull-btn');
+    var enrichBtn = document.getElementById('ra-enrich-btn');
+    var enrichName = document.getElementById('ra-enrich-name');
+    var enriching = false;
+
+    function setMsg(cls, html) { msgEl.className = cls; msgEl.innerHTML = html; }
+
+    function refreshStatus() {
+      fetch('/api/ra/status').then(function (x) { return x.json(); }).then(function (d) {
+        if (d.user && !userEl.value) userEl.value = d.user;
+        if (d.has) {
+          statusEl.className = 'ok';
+          statusEl.textContent = '已导入：' + d.ownerId + ' · ' + d.count + ' 款游戏 · ' + d.platforms +
+            ' 台主机（' + (d.platformNames || []).join(' / ') + '）· 更新于 ' + String(d.updatedAt || '').slice(0, 10);
+        } else {
+          statusEl.className = 'muted';
+          statusEl.textContent = '还没导入过。填好用户名和 Key，点「一键拉取」。';
+        }
+        if (d.hasKey) keyEl.placeholder = 'Web API Key（已保存，可留空）';
+        pullBtn.disabled = false;
+      }).catch(function () { statusEl.textContent = '检测中…（服务器没开？）'; });
+    }
+
+    /* ---------- 拉取结果：把「自动刷新了最近玩过的游戏」说清楚 ---------- */
+    function refreshedSummary(d) {
+      var out = '';
+      var list = d.refreshed || [];
+      if (list.length) {
+        out += '<br><br><b>已自动刷新最近 ' + (d.refreshDays || 7) + ' 天内玩过的 ' + list.length + ' 款</b>（时长 + 成就都是最新的）：';
+        out += '<div class="ra-refreshed">';
+        list.forEach(function (r) {
+          out += '<div class="ra-refreshed-row"><span class="ra-refreshed-title">' + r.title + '</span>' +
+            '<span class="muted">' + (r.playtimeMinutes != null ? r.playtimeMinutes + ' 分钟' : '时长未知') +
+            ' · 成就 ' + r.unlocked + '/' + r.achievements + '</span></div>';
+        });
+        out += '</div>';
+      } else {
+        out += '<br><span class="muted">最近 7 天没有新的游玩记录，无需刷新时长。</span>';
+      }
+      if ((d.refreshFailed || []).length) {
+        out += '<br><span class="err">有 ' + d.refreshFailed.length + ' 款刷新失败：' +
+          d.refreshFailed.map(function (f) { return f.title; }).join('、') + '</span>';
+      }
+      return out;
+    }
+
+    /* ---------- 一键拉取 ---------- */
+    pullBtn.onclick = async function () {
+      var user = (userEl.value || '').trim();
+      var key = (keyEl.value || '').trim();
+      if (!user) { setMsg('err', '请先填 RA 用户名。'); userEl.focus(); return; }
+      pullBtn.disabled = true;
+      setMsg('hint', '正在拉取…（4 个请求 + 自动刷新最近玩过的游戏，十几秒）');
+      try {
+        var res = await fetch('/api/ra/pull', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: user, key: key })
+        });
+        var d = await res.json();
+        pullBtn.disabled = false;
+        if (!d.ok) { setMsg('err', '拉取失败：' + (d.error || '未知错误')); return; }
+        if (window.__applyPlatformData) window.__applyPlatformData('retro', d.unified);
+        setMsg('ok', '拉取成功：<b>' + d.count + '</b> 款游戏 · <b>' + d.platformNames.length + '</b> 台主机<br>' +
+          '<span class="muted">' + d.platformNames.join(' / ') + '</span><br>' +
+          '通关 ' + d.awards.beaten + ' 款 · 精通 ' + d.awards.mastered + ' 款' +
+          (d.coversNew ? ' · 新存封面 ' + d.coversNew + ' 张' : ' · 封面全部已存在') +
+          (d.zeroAchievement ? '<br>另外补进 <b>' + d.zeroAchievement + '</b> 款「玩过但没拿到成就」的游戏（RA 的清单接口不收录它们）。封面和成就数已有，<span class="muted">时长等你点开那款游戏时自动补</span>。' : '') +
+          (d.library ? '<br>已同步进游戏数据库：新增 ' + d.library.added + ' 条，合并 ' + d.library.merged + ' 条（共 ' + d.library.total + ' 条）' : '') +
+          refreshedSummary(d) +
+          '<br><br><button class="src-btn active" id="ra-view">去看我的老游戏</button>');
+        var v = document.getElementById('ra-view');
+        if (v) v.onclick = function () {
+          if (window.__applyPlatformData) window.__applyPlatformData('retro', d.unified);
+          var nav = document.querySelector('.nav-btn[data-page="library"]');
+          if (nav) nav.click();
+        };
+        refreshStatus();
+      } catch (e) {
+        pullBtn.disabled = false;
+        setMsg('err', '请求失败：' + e.message + '（服务器没开的话，双击 start.bat）');
+      }
+    };
+
+    /* ---------- 补全全部（后台跑，前端轮询进度） ---------- */
+    function applyEnriched() {
+      fetch('/api/ra/status').then(function (x) { return x.json(); }).then(function (d) {
+        // 重新读一份最新的前端数据文件，让页面立刻用上新补的时长/成就
+        fetch('/data_ra.js?t=' + Date.now()).then(function (x2) { return x2.text(); }).then(function (t) {
+          var m = t.match(/window\.GAME_DATA_RETRO\s*=\s*([\s\S]*?);\s*$/m);
+          if (m && window.__applyPlatformData) {
+            try { window.__applyPlatformData('retro', JSON.parse(m[1])); } catch (e) { /* 解析失败就保持现状 */ }
+          }
+        }).catch(function () { /* 忽略 */ });
+      }).catch(function () { /* 忽略 */ });
+    }
+
+    enrichBtn.onclick = async function () {
+      if (enriching) return;
+      enriching = true;
+      enrichBtn.disabled = true;
+      setMsg('hint', '正在后台补全…（每款游戏 1 个请求，全部存本地，以后不再重复）');
+      try {
+        var res = await fetch('/api/ra/enrich-all', { method: 'POST' });
+        var d = await res.json();
+        if (!d.ok) { enriching = false; enrichBtn.disabled = false; setMsg('err', d.error || '启动失败'); return; }
+      } catch (e) {
+        enriching = false; enrichBtn.disabled = false;
+        setMsg('err', '请求失败：' + e.message); return;
+      }
+      var timer = setInterval(async function () {
+        try {
+          var p = await (await fetch('/api/ra/enrich-progress')).json();
+          enrichName.textContent = '已完成 ' + (p.done || 0) + ' / ' + (p.total || 0) +
+            '（新存徽章 ' + (p.badges || 0) + ' 张 · 补到时长 ' + (p.withTime || 0) + ' 款）';
+          if (p.state === 'done' || p.state === 'failed') {
+            clearInterval(timer);
+            enriching = false;
+            enrichBtn.disabled = false;
+            if (p.state === 'failed') { setMsg('err', '补全中断：' + (p.error || '未知错误')); return; }
+            setMsg('ok', '补全完成：<b>' + p.withTime + '</b> 款游戏拿到了时长，新存徽章 <b>' + p.badges +
+              '</b> 张' + (p.cached ? '（其中 ' + p.cached + ' 款走的本地缓存）' : '') +
+              (p.failed && p.failed.length ? '，' + p.failed.length + ' 款失败（下次再点会重试）' : '') +
+              (p.library ? '<br>游戏数据库已同步：库里共 ' + p.library.total + ' 条' : '') +
+              '<br><br><button class="src-btn active" id="ra-view2">去看我的老游戏</button>');
+            var v2 = document.getElementById('ra-view2');
+            if (v2) v2.onclick = function () {
+              applyEnriched();
+              var nav = document.querySelector('.nav-btn[data-page="library"]');
+              if (nav) nav.click();
+            };
+            applyEnriched();
+            refreshStatus();
+          }
+        } catch (e) { /* 轮询失败先等等，下一轮再试 */ }
+      }, 1500);
+    };
+
+    function toB64(file) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () { resolve(String(fr.result).split(',')[1] || ''); };
+        fr.onerror = function () { reject(new Error('读取文件失败：' + file.name)); };
+        fr.readAsDataURL(file);
+      });
+    }
+
+    async function upload(fileList) {
+      var all = Array.prototype.slice.call(fileList || []);
+      // 只传用得上的：网页 + 图片（封面/成就徽章）。css/js/字体那几 MB 没用，别浪费时间读。
+      var keep = all.filter(function (f) { return /\.(html?|png|jpe?g|gif|webp|svg)$/i.test(f.name); });
+      if (!keep.length) {
+        msgEl.className = 'err';
+        msgEl.textContent = '这个文件夹里没有网页文件（.html）。请确认选的是「另存为」出来的那个文件夹。';
+        return;
+      }
+      nameEl.textContent = '已选 ' + all.length + ' 个文件（有用 ' + keep.length + ' 个）';
+      var payload = [];
+      for (var i = 0; i < keep.length; i++) {
+        var f = keep[i];
+        var rel = f.webkitRelativePath || f.name;
+        if (rel.indexOf('/') >= 0) rel = rel.slice(rel.indexOf('/') + 1);   // 去掉最外层文件夹名
+        payload.push({ path: rel, b64: await toB64(f) });
+        if (i % 40 === 0) { msgEl.className = 'hint'; msgEl.textContent = '正在读取文件… ' + (i + 1) + ' / ' + keep.length + '（不联网）'; }
+      }
+      msgEl.className = 'hint';
+      msgEl.textContent = '正在解析…（全在本机处理，稍等几秒）';
+      pickBtn.disabled = true;
+      try {
+        var res = await fetch('/api/ra/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: payload })
+        });
+        var d = await res.json();
+        pickBtn.disabled = false;
+        if (!d.ok) { msgEl.className = 'err'; msgEl.textContent = '导入失败：' + (d.error || '未知错误'); return; }
+        msgEl.className = 'ok';
+        msgEl.innerHTML = '导入成功：<b>' + d.count + '</b> 款游戏 · 拆出 <b>' + d.platforms.length + '</b> 台主机<br>' +
+          '<span class="muted">' + (d.platformNames || []).join(' / ') + '</span><br>' +
+          '封面新存 ' + d.covers + ' 张，成就徽章新存 ' + d.badges + ' 张' +
+          (d.achGames ? '；其中 ' + d.achGames + ' 款带成就明细（你在网页里展开过的那些）' : '') +
+          '<br><br><button class="src-btn active" id="ra-view">去看我的老游戏</button>';
+        var v = document.getElementById('ra-view');
+        if (v) v.onclick = function () { if (window.__applyPlatformData) window.__applyPlatformData('retro', d.unified); };
+        refreshStatus();
+      } catch (e) {
+        pickBtn.disabled = false;
+        msgEl.className = 'err';
+        msgEl.textContent = '请求失败：' + e.message;
+      }
+      fileInput.value = '';
+    }
+
+    pickBtn.onclick = function () { fileInput.click(); };
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files.length) upload(fileInput.files);
+    });
+
+    refreshStatus();
+  })();
+
+  /* =====================================================================
+   * Nintendo 登录授权面板（导入页）
+   * 用户只登录一次；凭证由服务端保存并自动续期，前端永远拿不到凭证本身。
+   * ===================================================================== */
+  (function () {
+    var st = document.getElementById('ns-status');
+    var msg = document.getElementById('ns-msg');
+    var loginBtn = document.getElementById('ns-login-btn');
+    var finishBtn = document.getElementById('ns-finish-btn');
+    var logoutBtn = document.getElementById('ns-logout-btn');
+    var linkEl = document.getElementById('ns-link');
+    var hintEl = document.getElementById('ns-login-hint');
+    if (!st) return;
+
+    function setMsg(cls, text) { msg.className = cls; msg.textContent = text; }
+
+    /* 后台导入进度：登录成功后自动开始，用户不用管也不用确认 */
+    var pollTimer = null;
+    function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+    /** 后台是否「真的在跑」：只有 running 才需要轮询。
+     *  完成/失败/限流/空闲一律不轮询 —— 之前无条件轮询导致页面自己刷自己，
+     *  几小时刷出 3000+ 个请求（2026-10-19 用户 F12 发现）。 */
+    function pollingNeeded(p) { return !!p && !!p.ok && p.state === 'running'; }
+    function progText(p) {
+      if (!p || p.state === 'idle') return '';
+      if (p.state === 'failed') return '导入出错了：' + (p.error || '未知原因') + '。修好后重新点一次「拉取游玩记录」即可，已导入的部分不会丢。';
+      if (p.state === 'rate-limited') return '任天堂开始限流了，先停一下（已完成 ' + p.done + '/' + p.total + ' 款）。过一阵再来拉，已补的不会丢。';
+      if (p.state === 'done') {
+        var extra = p.unavailable ? '；另有 ' + p.unavailable + ' 款 3DS，任天堂不提供日历，只显示总时长（正常现象）。' : '';
+        return '导入完成：' + p.total + ' 款，补到 ' + p.added + ' 天游玩记录（' + p.skipped + ' 款无变化已跳过）' + extra;
+      }
+      if (p.phase === 'list') return '正在后台导入：① 拉游戏清单…';
+      return '正在后台导入：② 补按天游玩记录 ' + p.done + '/' + p.total + ' 款（已补 ' + p.added + ' 天）…慢慢跑，不用等它。';
+    }
+    function pollImport() {
+      if (pollTimer) return;
+      var n = 0;
+      var tick = function () {
+        // 兜底上限：最多轮询 1200 次（约 1 小时）。就算后台状态卡在 running，也不会一直刷下去。
+        if (++n > 1200) { setMsg('hint', '后台任务跑太久了，已停止自动刷新。要接着看进度，手动点一次「拉取游玩记录」即可。'); stopPoll(); return; }
+        fetch('/api/nintendo/enrich-days-progress?brief=1').then(function (x) { return x.json(); }).then(function (p) {
+          if (!p.ok) { stopPoll(); return; }
+          var t = progText(p);
+          if (t) setMsg(p.state === 'done' ? 'ok' : 'hint', t);
+          if (p.state === 'done' || p.state === 'failed' || p.state === 'rate-limited') { stopPoll(); refresh(); }
+        }).catch(function () { stopPoll(); });
+      };
+      pollTimer = setInterval(tick, 3000);
+      tick();
+    }
+
+    function refresh() {
+      fetch('/api/nintendo/status').then(function (x) { return x.json(); }).then(function (d) {
+        if (!d.configOk) {
+          st.className = 'err';
+          st.textContent = '缺少 game_hub/config/nintendo.json，接口参数读不到。';
+          return;
+        }
+        if (d.has) {
+          st.className = 'ok';
+          st.textContent = '已登录（' + String(d.savedAt || '').slice(0, 10) + '）· 凭证存本机，约两年内不用再登录';
+          // 只在后台「真的在跑」时才轮询。以前这里无条件 pollImport() →
+          // 完成时 tick 又调 refresh()，refresh 又 pollImport()，自己刷自己，永不停止。
+          fetch('/api/nintendo/enrich-days-progress?brief=1').then(function (x) { return x.json(); })
+            .then(function (p) { if (pollingNeeded(p)) pollImport(); })
+            .catch(function () { });
+        } else if (d.hasPending) {
+          st.className = 'hint';
+          st.textContent = '登录链接已生成，等你在任天堂页面登录完把链接粘回来。';
+        } else {
+          st.className = 'muted';
+          st.textContent = '还没登录。点「打开任天堂登录页」，按① ② ③ 走一遍就行，只登录一次。';
+        }
+      }).catch(function () { st.textContent = '检测中…（服务器没开？）'; });
+    }
+
+    loginBtn.onclick = function () {
+      loginBtn.disabled = true;
+      hintEl.textContent = '正在生成登录链接…';
+      fetch('/api/nintendo/auth/start', { method: 'POST' }).then(function (x) { return x.json(); }).then(function (d) {
+        loginBtn.disabled = false;
+        if (!d.ok) { hintEl.textContent = '生成失败：' + (d.error || '未知错误'); return; }
+        var w = window.open(d.url, '_blank');
+        if (w) {
+          hintEl.textContent = '已打开新标签页，登录完回来粘贴链接';
+        } else {
+          // 弹窗被浏览器拦了：把链接放进输入框，让用户自己复制去打开
+          hintEl.textContent = '弹窗被拦截了，已把链接放进输入框，复制它到浏览器打开';
+          linkEl.value = d.url;
+        }
+        setMsg('hint', '在刚打开的页面登录 → 到「选择此人」页右键复制按钮链接 → 粘回上面输入框。');
+        refresh();
+      }).catch(function (e) {
+        loginBtn.disabled = false;
+        hintEl.textContent = '请求失败：' + e.message + '（服务器没开的话，双击 start.bat）';
+      });
+    };
+
+    finishBtn.onclick = async function () {
+      var link = (linkEl.value || '').trim();
+      if (!link) { setMsg('err', '先把复制到的授权链接粘贴进输入框。'); linkEl.focus(); return; }
+      finishBtn.disabled = true;
+      setMsg('hint', '正在完成登录…');
+      try {
+        var res = await fetch('/api/nintendo/auth/finish', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link: link })
+        });
+        var d = await res.json();
+        finishBtn.disabled = false;
+        if (!d.ok) { setMsg('err', '登录失败：' + (d.error || '未知错误')); return; }
+        linkEl.value = '';
+        setMsg('hint', '登录成功。已在后台开始导入，你该干嘛干嘛，不用管它也不用确认。');
+        pollImport();
+        refresh();
+      } catch (e) {
+        finishBtn.disabled = false;
+        setMsg('err', '请求失败：' + e.message);
+      }
+    };
+
+    logoutBtn.onclick = async function () {
+      if (!window.confirm('解除绑定会删掉本机保存的 Nintendo 登录凭证，之后要重新登录一次。确定吗？')) return;
+      try {
+        var res = await fetch('/api/nintendo/logout', { method: 'POST' });
+        var d = await res.json();
+        setMsg(d.ok && d.removed ? 'ok' : 'hint',
+          d.removed ? '已解除绑定，本机凭证已删除。' : '本来就没保存过凭证。');
+        refresh();
+      } catch (e) { setMsg('err', '请求失败：' + e.message); }
+    };
+
+    refresh();
+  })();
+  </script>
+
+  <!-- 添加游戏向导（游戏数据库 → 添加游戏） -->
+  <div class="modal-mask" id="db-add-mask" style="display:none">
+    <div class="modal db-modal">
+      <span class="modal-close" id="db-add-close">&times;</span>
+      <h3 style="margin:0 0 10px">添加游戏到数据库</h3>
+      <div class="db-add-row">
+        <input id="db-add-q" class="db-input" style="flex:1" type="text" placeholder="输入游戏名（中文 / 英文 / 日文都行）">
+        <select id="db-add-source" class="db-input" style="width:auto" title="数据源：自动=Steam优先，搜不到自动换 Bangumi">
+          <option value="auto">源：自动</option>
+          <option value="steam">Steam</option>
+          <option value="bangumi">Bangumi（中文名全）</option>
+        </select>
+        <button class="src-btn" id="db-add-search">搜索</button>
+      </div>
+      <div class="db-add-hint" id="db-add-hint">自动模式：优先 Steam，Steam 搜不到就自动换 Bangumi（Bangumi 的官方中文名最全）。封面和图标首次搜到后都会下载到本地，之后不再联网。</div>
+      <div id="db-add-results" class="db-results"></div>
+      <div class="db-manual">
+        <div class="db-add-hint">纯手动添加（不联网，自己填）</div>
+        <div class="db-add-row">
+          <input id="db-manual-name" class="db-input" style="flex:1" type="text" placeholder="游戏名（必填）">
+          <input id="db-manual-alias" class="db-input" style="flex:1" type="text" placeholder="别名（可选，逗号分隔）">
+          <button class="src-btn" id="db-manual-add">手动添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 手机（屏幕账本）：两个入口，手动导入 ============
+       没有联网接口，只能用户手动把手机导出的文件传上来：
+         ① .json 使用数据  ② .zip 图标包
+       每次都是整份替换；导入完重载 data_phone.js 并重绘，不整页刷新。
+       ============================================================ -->
+  <script>
+  (function () {
+    var dataBtn = document.getElementById('ph-data-btn');
+    if (!dataBtn) return;
+    var dataFile = document.getElementById('ph-data-file');
+    var iconFile = document.getElementById('ph-icon-file');
+    var msg = document.getElementById('ph-msg');
+    var stEl = document.getElementById('ph-status');
+    var dataName = document.getElementById('ph-data-name');
+    var iconName = document.getElementById('ph-icon-name');
+
+    function say(html, cls) {
+      msg.className = 'hint' + (cls ? ' ' + cls : '');
+      msg.innerHTML = html || '';
+    }
+    function nf(n) { return Number(n || 0).toLocaleString('zh-CN'); }
+
+    function renderStatus(s) {
+      if (!s) { stEl.textContent = '还没导入手机数据'; return; }
+      var u = s.usage, ic = s.icons;
+      var bits = [];
+      if (u) bits.push('已导入 <b>' + nf(s.visibleCount != null ? s.visibleCount : u.apps) + '</b> 个应用' +
+        (s.unnamedCount ? '（另有 ' + nf(s.unnamedCount) + ' 个只剩包名的系统/已卸载应用，已自动过滤）' : '') +
+        ' · ' + nf(u.rows) + ' 条按天记录 · 共 <b>' + (u.totals ? u.totals.hours : '—') + ' 小时</b>');
+      else bits.push('还没有使用数据');
+      if (ic) bits.push('图标 <b>' + nf(ic.count) + '</b> 个（缺 ' + nf(ic.missing) + '）');
+      else bits.push('还没有图标包');
+      if (s.hiddenCount) bits.push('已隐藏 ' + nf(s.hiddenCount) + ' 个');
+      stEl.className = 'muted';
+      stEl.innerHTML = bits.join('　·　') +
+        (u && u.coverage ? '<br><span class="hint">数据范围 ' + u.coverage.from + ' ~ ' + u.coverage.to +
+          '（' + u.coverage.days + ' 天）· 设备 ' + (u.device || '—') + ' · 最后导入 ' +
+          String(u.importedAt || '').slice(0, 19).replace('T', ' ') + '</span>' : '');
+
+      dataName.textContent = u ? ('上次：' + (u.exportedAtText || '') + '（' + nf(u.rows) + ' 条）') : '还没导入';
+      iconName.textContent = ic ? ('上次：' + (ic.exportedAtText || '') + '（' + nf(ic.count) + ' 个）') : '还没导入';
+    }
+
+    function loadStatus() {
+      return fetch('/api/phone/status').then(function (r) { return r.json(); })
+        .then(function (s) { renderStatus(s); return s; })
+        .catch(function () { stEl.textContent = '读取状态失败（本地程序没在运行？）'; });
+    }
+
+    /** 导入成功后重载 data_phone.js（带时间戳绕开缓存），再让 app.js 重算重绘 */
+    function reloadPhoneData() {
+      return new Promise(function (resolve) {
+        var s = document.createElement('script');
+        s.src = 'data_phone.js?t=' + Date.now();
+        s.onload = function () { try { window.GH_AFTER_SOURCE_RELOAD('phone'); } catch (e) {} resolve(); };
+        s.onerror = function () { resolve(); };
+        document.body.appendChild(s);
+      });
+    }
+
+    function upload(kind, file) {
+      if (!file) return;
+      var btn = kind === 'usage' ? dataBtn : document.getElementById('ph-icon-btn');
+      var old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '正在导入…';
+      say('正在读取 <b>' + file.name + '</b> …');
+      file.arrayBuffer().then(function (buf) {
+        return fetch('/api/phone/' + kind, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: buf
+        });
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || '导入失败');
+        var txt;
+        if (kind === 'usage') {
+          txt = '✓ 已导入使用数据：<b>' + nf(j.apps) + '</b> 个应用、' + nf(j.rows) + ' 条记录，合计 <b>' +
+            j.totalHours + ' 小时</b>' + (j.coverage ? '（' + j.coverage.from + ' ~ ' + j.coverage.to + '）' : '');
+        } else {
+          txt = '✓ 已导入图标包：本次新收 <b>' + nf(j.newCount) + '</b> 个，本地共 <b>' + nf(j.count) + '</b> 个（' +
+            j.size + '×' + j.size + (j.carriedOver ? '，沿用本地旧图标 ' + nf(j.carriedOver) + ' 个' : '') + '）' +
+            (j.missing ? '，手机端取不到的 ' + nf(j.missing) + ' 个优先用旧图标兜底' : '');
+        }
+        say(txt, 'ok');
+        return reloadPhoneData().then(loadStatus);
+      }).catch(function (e) {
+        say('✗ ' + e.message, 'bad');
+      }).then(function () {
+        btn.disabled = false;
+        btn.textContent = old;
+      });
+    }
+
+    dataBtn.onclick = function () { dataFile.click(); };
+    document.getElementById('ph-icon-btn').onclick = function () { iconFile.click(); };
+    dataFile.onchange = function () { upload('usage', this.files[0]); this.value = ''; };
+    iconFile.onchange = function () { upload('icons', this.files[0]); this.value = ''; };
+
+    loadStatus();
+  })();
+  </script>
+</body>
+</html>

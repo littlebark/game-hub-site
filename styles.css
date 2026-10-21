@@ -1,0 +1,2699 @@
+/* ===========================================================================
+ * styles.css  ——  聚合游戏平台 明亮主题（用户明确不喜欢暗色，2026-10-18 定稿）
+ * 纯原生 CSS，无任何外部依赖 / 无 CDN。
+ * ======================================================================== */
+
+/* ---------- 基础重置 ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-0: #eef1f6;        /* 页面底色 */
+  --bg-1: #ffffff;        /* 侧栏 / 卡片 */
+  --bg-2: #f5f7fb;        /* 行 / 悬浮 */
+  --bg-3: #e9edf4;        /* 输入框 / 进度条轨道 */
+  --border: #dfe4ee;
+  --text-0: #1d2434;      /* 主文字 */
+  --text-1: #45506b;      /* 次文字 */
+  --text-2: #8b94a8;      /* 弱文字 */
+  --accent: #3b6fe0;      /* 主题强调色（加深以配白字） */
+  --accent-2: #14b8a6;
+  --danger: #e5484d;
+  --radius: 12px;
+  --shadow: 0 6px 24px rgba(23, 43, 77, 0.10);
+  /* 页面背景（未设置时为空，由「外观设置」写入：内置渐变或自定义图片） */
+  --page-bg: none;
+  font-size: 15px;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 自定义页面背景（导入页「外观设置」写入 localStorage 后生效） ----------
+ * has-bg     : 显示背景层（内置渐变或自定义图片，都画在 ::before 上）
+ * veil       : 自定义图片时加一层半透明白纱，保证上面的文字仍可读
+ */
+html.has-bg body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--page-bg);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+html.has-bg.veil body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+/* 有背景图时，侧栏改成半透明白，让背景透出来一点 */
+html.has-bg .sidebar {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+/* 关键：页面绝大部分面积被白色卡片盖住了，背景只在缝里露一点，看着就像"没生效"。
+ * 所以设了背景之后把卡片改成明显透底的半透明白 —— 底色能真正染上来，
+ * 文字仍是深色。0.84 这种高不透明度盖在浅色上等于还是白的，必须压到 0.45 左右。 */
+html.has-bg .panel,
+html.has-bg .kpi,
+html.has-bg .game-row,
+html.has-bg .meta-cell,
+html.has-bg .pcard,
+html.has-bg .year-cell,
+html.has-bg .ach-item,
+html.has-bg .xach-card {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+html.has-bg .game-row:hover,
+html.has-bg .panel:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* 弹层基本不透明：里面要看成就图，别被背景干扰 */
+html.has-bg .modal {
+  background: rgba(255, 255, 255, 0.97);
+}
+
+/* ---------- 布局 ---------- */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #ffffff, #f7f9fc);
+  border-right: 1px solid var(--border);
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 6px 10px 18px;
+  color: var(--text-0);
+}
+
+.logo .dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  margin-right: 8px;
+  vertical-align: middle;
+  box-shadow: 0 2px 10px rgba(59, 111, 224, 0.35);
+}
+
+.nav-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-1);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 11px 14px;
+  margin: 4px 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.nav-btn:hover {
+  background: var(--bg-2);
+  color: var(--text-0);
+}
+
+.nav-btn.active {
+  background: linear-gradient(135deg, rgba(59, 111, 224, 0.12), rgba(20, 184, 166, 0.10));
+  color: var(--accent);
+  border-color: rgba(59, 111, 224, 0.35);
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 12px 10px 0;
+  font-size: 12px;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+}
+
+html {
+  /* 滚动条槽位常驻：页面右侧始终留出可见的滚动条，不会滑到边缘才冒出来 */
+  scrollbar-gutter: stable;
+}
+
+.main {
+  flex: 1;
+  padding: 26px 32px 60px;
+  /* clip 不产生滚动容器：不会像 hidden 那样让子元素的 position:sticky 失效
+   * （生涯页左侧导航之前吸不住就是这个引起的，2026-10-19 用户反馈） */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+.page {
+  display: none;
+  animation: fade 0.2s ease;
+}
+
+/* 游戏库页整体收窄居中：宽屏下不再横向铺满，观感接近窄窗口/手机端（用户 2026-10-19） */
+#page-library {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* ===========================================================================
+ * 生涯页：左侧目录 + 右侧内容（用户 2026-10-19：面板多了要能跳）
+ * ======================================================== */
+
+.career-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.career-nav {
+  position: sticky;
+  top: 12px;
+  flex: 0 0 132px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+
+.cn-title {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 0 6px 6px;
+}
+
+.cn-item {
+  padding: 7px 10px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cn-item:hover { background: var(--bg-3); color: var(--text-0); }
+
+.cn-item.on {
+  background: var(--bg-3);
+  color: var(--text-0);
+  font-weight: 600;
+}
+
+/* 窄屏放不下目录：藏起来，直接上下滚就行 */
+@media (max-width: 920px) {
+  .career-nav { display: none; }
+}
+
+.career-main { flex: 1 1 auto; min-width: 0; }
+
+/* 生涯页收窄居中，宽度与游戏库一致（用户 2026-10-19：两边要一样） */
+#page-career {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.page.active {
+  display: block;
+}
+
+@keyframes fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+/* ---------- 平台页签 ---------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.tab {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tab:hover {
+  background: var(--bg-2);
+  color: var(--text-0);
+}
+
+.tab.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 4px 14px rgba(59, 111, 224, 0.30);
+}
+
+/* ---------- 顶部：页签（单行：全部 + 各平台） ---------- */
+.tabs-wrap {
+  margin-bottom: 18px;
+}
+
+.tabs-wrap .tabs {
+  margin-bottom: 10px;
+}
+
+.tabs-wrap .tabs:last-child {
+  margin-bottom: 0;
+}
+
+/* 页签上的数量角标（全部 538 / Steam 187 / Xbox 351） */
+.tab small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.5;
+}
+
+.tab.active small {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* 还没接入的平台：灰着，但仍可点（点了跳导入页） */
+.tab.off {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.tab.off:hover {
+  opacity: 0.85;
+  background: var(--bg-2);
+  color: var(--text-0);
+}
+
+/* ---------- 游戏库列表 ---------- */
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.game-row {
+  display: grid;
+  /* 6 个子元素：封面 / 标题 / 平台 / 时长 / 成就 / 最后游玩。
+   * 平台列用 max-content（标签本来就小），别给它 1.3fr 撑出大片空白；
+   * 空余宽度留给标题和成就块，行与行之间不会隔得太开。 */
+  grid-template-columns: 104px minmax(200px, 1.6fr) minmax(90px, max-content) 110px minmax(180px, 1.3fr) 104px;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.game-row:hover {
+  background: var(--bg-2);
+  border-color: rgba(59, 111, 224, 0.35);
+  transform: translateY(-1px);
+}
+
+.cover {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* 列表行里的封面放大一倍（52 → 104），行高随之撑起来 */
+.game-row .cover {
+  width: 104px;
+  height: 104px;
+  border-radius: 12px;
+  font-size: 40px;
+}
+
+/* 封面图覆盖在首字母色块之上；图片加载失败会被 JS 移除，自动露出底下色块 */
+.cover > span { opacity: 1; transition: opacity 0.15s; }
+.cover > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- 成就全收集（100%）→ 金框 ----------
+ * 样式照搬 RA 官网自己的做法（其 CSS 里 .goldimage{ border:2px solid gold }）。
+ * 全平台通用：Steam / Xbox / Retro 只要有平台满成就就亮金框。
+ * 星星不放封面上，改放成就进度条右边（见 .ach-star）。 */
+.cover.full,
+.hero-cover.full {
+  border: 2px solid gold;
+  box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.30), 0 0 12px rgba(255, 215, 0, 0.45);
+}
+
+/* 成就进度条 + 满成就金星：星星紧跟在条右侧 */
+.ach-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ach-bar-row .ach-bar { flex: 1; }
+
+.ach-star {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1;
+  color: gold;
+  text-shadow: 0 1px 3px rgba(160, 120, 0, 0.45);
+  cursor: help;
+}
+
+/* 游戏库排序条 */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sort-bar .sort-label {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.sort-bar select {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-0);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.g-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-0);
+}
+
+.g-title .g-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.platform-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.p-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.time {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.time small {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+/* 成就进度 */
+.ach-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ach-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.ach-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.ach-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.ach-icons {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+/* 没有成就系统的平台（任天堂全平台）：那一栏改显示游玩天数，进度条画成灰条不误导 */
+.ach-bar.na {
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg, var(--bg-3), var(--bg-3) 4px, transparent 4px, transparent 8px
+  );
+  border-radius: 999px;
+}
+
+.ach-top .na-tag {
+  color: var(--text-3);
+  font-size: 10px;
+  border: 1px solid var(--border, var(--bg-3));
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 15px;
+}
+
+.ach-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: var(--bg-3);
+}
+
+.ach-dot.on {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  box-shadow: 0 1px 5px rgba(59, 111, 224, 0.4);
+}
+
+.last-played {
+  font-size: 12px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- 详情弹层 ---------- */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 32, 52, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  z-index: 50;
+  overflow-y: auto;
+  animation: fade 0.18s ease;
+}
+
+.modal {
+  width: min(880px, 100%);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 24px 26px 30px;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.modal-head .cover {
+  width: 64px;
+  height: 64px;
+  font-size: 26px;
+}
+
+.modal-head h2 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.modal-head .aliases {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+.modal-close {
+  margin-left: auto;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: transparent;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-1);
+  margin: 22px 0 10px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.meta-cell {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.meta-cell .k {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.meta-cell .v {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 平台明细卡 */
+.pcard {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.pcard-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pcard-head .p-tag {
+  font-size: 12px;
+}
+
+.pcard-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.pcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.pcard-grid .k {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.pcard-grid .v {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 平台卡脚注：标明哪些是该平台特有字段 */
+.pcard-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+/* 成就列表 */
+.ach-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.ach-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 11px;
+}
+
+.ach-item .badge {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--bg-3);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.ach-item .badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 未解锁成就：图标置灰变淡（亮色底下压太暗会像黑块，用透明度） */
+.ach-item.off .badge img {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.ach-item.on .badge {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+}
+
+.ach-item.on .badge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--accent-2);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+/* 已解锁右下角的 ✓ 打勾标记 */
+.ach-item .badge .tick {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;  background: #22c55e;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.ach-item .a-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-0);
+  line-height: 1.25;
+}
+
+.ach-item.off .a-name {
+  color: var(--text-2);
+}
+
+.ach-item .a-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+/* ---------- 生涯统计 ---------- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.kpi {
+  background: linear-gradient(160deg, var(--bg-1), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  top: -20px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 111, 224, 0.12), transparent 70%);
+}
+
+.kpi .k-label {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.kpi .k-value {
+  font-size: 30px;
+  font-weight: 800;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi .k-value small {
+  font-size: 14px;
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.kpi .k-sub {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.panel h3 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+/* 平台分布横条 */
+.pdist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 11px;
+}
+
+.pdist-name {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdist-track {
+  flex: 1;
+  height: 22px;
+  background: var(--bg-3);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pdist-fill {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 36px;
+  transition: width 0.4s ease;
+}
+
+/* 年度下拉 */
+.year-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+select.year-select {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-0);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.year-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.year-cell {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.year-cell .k {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.year-cell .v {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-cell .v small {
+  font-size: 12px;
+  color: var(--text-1);
+}
+
+/* 周柱状图 */
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 200px;
+  padding: 10px 4px 0;
+  overflow-x: auto;
+}
+
+.week-col {
+  flex: 1;
+  min-width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 6px;
+}
+
+.week-bar-wrap {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.week-bar {
+  width: 70%;
+  max-width: 34px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  min-height: 3px;
+  position: relative;
+  transition: height 0.4s ease;
+}
+
+.week-bar:hover::after {
+  content: attr(data-min);
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.week-label {
+  font-size: 10px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 导入占位 ---------- */
+.placeholder {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--text-2);
+}
+
+.placeholder .big {
+  font-size: 54px;
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+
+.placeholder h2 {
+  font-size: 20px;
+  color: var(--text-1);
+  margin-bottom: 8px;
+}
+
+.placeholder p {
+  font-size: 14px;
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 920px) {
+  .game-row {
+    grid-template-columns: 64px 1fr 1fr;
+    grid-row-gap: 8px;
+    padding: 10px 12px;
+    gap: 12px;
+  }
+  .game-row .cover {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    font-size: 26px;
+  }
+  .game-row .ach-block,
+  .game-row .ach-icons,
+  .game-row .last-played {
+    grid-column: 1 / -1;
+  }
+  .sidebar {
+    width: 180px;
+  }
+}
+
+/* 滚动条 —— 颜色必须和页面背景拉开差距（之前 #e9edf4/#eef1f6 跟浅蓝背景几乎同色，
+ * 用户完全看不到滚动条，2026-10-19 反馈「游戏库加滚动条」实际就是被隐形了） */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.65); }
+::-webkit-scrollbar-thumb { background: #aeb9cf; border-radius: 6px; border: 2px solid rgba(255, 255, 255, 0.65); }
+::-webkit-scrollbar-thumb:hover { background: #8d9ab5; }
+
+/* 数据源切换 */
+.src-switch { margin-top: 14px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.src-title { font-size: 11px; color: var(--text-2); letter-spacing: .08em; margin-bottom: 7px; }
+.src-btn {
+  display: block; width: 100%; margin-bottom: 6px; padding: 7px 10px;
+  background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; font-size: 13px; text-align: left;
+  transition: all .15s;
+}
+.src-btn:hover:not(:disabled) { background: var(--bg-3); color: var(--text-0); }
+.src-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.src-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 导入页 / 表单 */
+.steam-panel label { display: block; font-size: 12px; color: var(--text-2); margin: 12px 0 5px; }
+.steam-panel input {
+  width: 100%; padding: 9px 11px; background: var(--bg-3); color: var(--text-0);
+  border: 1px solid var(--border); border-radius: 8px; font-size: 14px; box-sizing: border-box;
+}
+.steam-panel input:focus { outline: none; border-color: var(--accent); }
+.muted { color: var(--text-2); font-size: 13px; margin-bottom: 6px; }
+.ok { color: #15803d; font-size: 13px; margin-bottom: 10px; }
+.err { color: var(--danger); font-size: 13px; }
+.hint { color: var(--text-2); font-size: 12px; margin-top: 10px; line-height: 1.5; }
+.result { margin-top: 14px; }
+.result ul.rl { list-style: none; margin: 8px 0; }
+.result ul.rl li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-1); }
+
+/* ---------- 成就大图浮层（点击成就徽章弹出） ---------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(20, 26, 40, 0.66);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade 0.15s ease;
+}
+
+.lightbox-body {
+  position: relative;
+  max-width: min(520px, 86vw);
+  padding: 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(23, 43, 77, 0.35);
+  text-align: center;
+}
+
+.lightbox-body img {
+  max-width: 100%;
+  max-height: min(420px, 62vh);
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  image-rendering: auto;
+}
+
+.lightbox-title {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-0);
+}
+
+.lightbox-body .modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* 可点击放大的徽章：鼠标手势 + 悬停提示 */
+.ach-item .badge.zoomable { cursor: zoom-in; transition: transform 0.12s ease; }
+.ach-item .badge.zoomable:hover { transform: scale(1.08); }
+
+/* 跨端游戏的成就分段小标题（例如「Steam 成就」「Xbox 成就」） */
+.ach-sub {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.3px;
+}
+.ach-sub:first-child { margin-top: 0; }
+
+/* ---------- Xbox 官方风成就大卡片（图占一半 / 文字占一半） ---------- */
+.xach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.xach-card {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 118px;
+}
+
+.xach-card .xach-img {
+  width: 118px;
+  flex: none;
+  position: relative;
+  background: var(--bg-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+}
+
+.xach-card .xach-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.xach-card.off .xach-img img {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.xach-card .xach-noimg {
+  font-size: 30px;
+  color: var(--text-2);
+}
+
+.xach-card .xach-tick,
+.xach-card .xach-lock {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-style: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.xach-card .xach-tick { background: #22c55e; }
+
+.xach-card.off .xach-lock {
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.xach-card .xach-info {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.xach-card .xach-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.xach-card .xach-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xach-card.off .xach-name { color: var(--text-2); }
+
+/* G 分数徽章（官方是右上角小圆片） */
+.xach-card .xach-g {
+  flex: none;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xach-card.off .xach-g { background: var(--bg-3); color: var(--text-2); }
+
+.xach-card .xach-desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-1);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.xach-card.off .xach-desc { color: var(--text-2); }
+
+.xach-card .xach-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+  margin-top: auto;
+}
+
+.xach-card .xach-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.xach-card .xach-meta {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+/* ===========================================================================
+ * 最近游玩横幅（参照 Exophase：用最近一款游戏的封面图做背景）
+ * 封面是竖图，拉宽会糊 —— 所以故意加大幅模糊当作「氛围色块」用，
+ * 前景再叠一张清晰小封面 + 信息，两者互补，观感稳定。
+ * ========================================================================= */
+.hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  min-height: 180px;
+  display: flex;
+  align-items: flex-end;
+  border: 1px solid var(--border);
+  /* 干净的浅色底：不再拿封面拉伸铺满当背景（RA 的方图标拉成宽横幅很难看） */
+  background: linear-gradient(135deg, var(--bg-1), var(--bg-2) 70%, var(--bg-3));
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.hero:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.hero .hero-inner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 18px 20px;
+  width: 100%;
+}
+
+/* 封面框：与列表缩略图同一套做法 —— 正方形 + 图片绝对定位铺满（object-fit:cover），
+ * 首字母垫在图片下面当加载失败兜底。列表看着舒服，横幅用一样的就不会突兀。 */
+.hero .hero-cover {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: var(--bg-3);
+  box-shadow: 0 10px 26px rgba(23, 43, 77, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+  overflow: hidden;
+}
+
+.hero .hero-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero .hero-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.hero .hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-0);
+  line-height: 1.2;
+}
+
+.hero .hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-1);
+}
+
+.hero .hero-meta b {
+  color: var(--text-0);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 没有封面可用时整个横幅隐藏，不占位 */
+.hero.hero-none { display: none; }
+
+/* ---------- 导入页「外观设置」：背景色板 / 上传按钮 ---------- */
+.bg-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 6px;
+}
+
+.bg-swatch {
+  width: 88px;
+  height: 54px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+.bg-swatch.on {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 111, 224, 0.15);
+}
+
+.bg-swatch span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-size: 11px;
+  color: #1d2434;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.bg-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.bg-actions .src-btn { width: auto; margin-bottom: 0; }
+
+/* ===== 游戏数据库页（docs/03 §16.7） ===== */
+.db-bar { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+.db-input {
+  padding: 8px 12px; border: 1px solid var(--border, #e3e8f2); border-radius: 8px;
+  background: #fff; color: var(--text-0, #1d2433); font-size: 13px; outline: none;
+}
+.db-input:focus { border-color: var(--accent); }
+.db-bar .db-input:first-child { flex: 1; min-width: 220px; }
+.db-select { width: auto; }
+.db-stats { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-1); font-size: 13px; margin-bottom: 12px; }
+.db-stats b { color: var(--text-0, #1d2433); font-size: 15px; }
+.db-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: var(--bg-2); margin-bottom: 10px; cursor: pointer; }
+.db-row:hover { background: #eef2fb; box-shadow: 0 1px 6px rgba(25,45,90,.08); }
+.db-row .db-cover { width: 88px; height: 124px; border-radius: 8px; object-fit: cover; background: #dfe5f2; flex: none; box-shadow: 0 1px 5px rgba(25,45,90,.15); }
+.db-row .db-main { flex: 1; min-width: 0; }
+.db-row .db-name { font-size: 16px; font-weight: 600; color: var(--text-0, #1d2433); }
+.db-row .db-sub { font-size: 13px; color: var(--text-1); margin-top: 5px; }
+.db-row .db-tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 20px; background: #e6efff; color: var(--accent); margin-right: 5px; }
+.db-row .db-tag.warn { background: #fff3e0; color: #b26a00; }
+.db-modal { max-width: 620px; }
+.db-add-row { display: flex; gap: 8px; margin: 10px 0; }
+.db-add-row .src-btn { width: auto; margin: 0; }
+.db-add-hint { font-size: 12px; color: var(--text-1); margin: 6px 0; line-height: 1.6; }
+.db-results { max-height: 320px; overflow: auto; margin: 8px 0; }
+.db-res { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
+.db-res:hover { background: var(--bg-2); }
+.db-res img { width: 92px; height: 36px; object-fit: cover; border-radius: 5px; background: #dfe5f2; flex: none; }
+.db-res .r-main { flex: 1; min-width: 0; }
+.db-res .r-name { font-size: 13px; font-weight: 500; color: var(--text-0, #1d2433); }
+.db-res .r-sub { font-size: 12px; color: var(--text-1); }
+.db-manual { border-top: 1px solid var(--border, #e3e8f2); padding-top: 10px; margin-top: 6px; }
+
+/* ===== 游戏数据库：详情页 ===== */
+.db-d-top { margin-bottom: 12px; }
+.db-d-card { display: flex; gap: 20px; padding: 18px; border-radius: 12px; background: var(--bg-2); }
+.db-d-cover { width: 200px; height: 280px; object-fit: cover; border-radius: 10px; background: #dfe5f2; flex: none; box-shadow: 0 2px 10px rgba(25,45,90,.16); }
+.db-d-main { flex: 1; min-width: 0; }
+.db-d-name { margin: 0 0 8px; font-size: 22px; color: var(--text-0, #1d2433); }
+.db-d-line { font-size: 13px; color: var(--text-1); margin: 6px 0; }
+.db-d-bit { display: inline-block; margin-right: 16px; }
+.db-d-desc { font-size: 13px; line-height: 1.7; color: var(--text-1); margin: 10px 0; padding: 10px 12px; background: var(--bg-1, #f6f8fd); border-radius: 8px; }
+.db-d-plats { margin-top: 12px; }
+.db-d-plat { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; padding: 8px 12px; border-radius: 8px; background: var(--bg-1, #f6f8fd); margin-bottom: 6px; }
+.db-d-plat b { color: var(--text-0, #1d2433); }
+.db-d-plat span { color: var(--text-1); }
+.db-d-edit { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--bg-2); }
+.db-d-edit-title { font-size: 13px; color: var(--text-1); margin-bottom: 10px; }
+.db-d-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.db-d-edit-row label { width: 52px; font-size: 13px; color: var(--text-1); flex: none; text-align: right; }
+.db-d-edit-row input { flex: 1; max-width: 420px; }
+
+/* ===========================================================================
+ * RetroAchievements（老游戏 / 模拟器）
+ *   · 游戏库页：主机子页签 + 顶部 RA 概览条
+ *   · 导入页：本地网页导入面板（不联网）
+ * 明亮主题，色值沿用上面的 CSS 变量。
+ * ======================================================================== */
+
+/* 第二排「主机子页签」：小一号、偏灰，和主数据源页签区分开 */
+.tabs.sub {
+  margin-top: -4px;
+}
+
+.tabs.sub .tab {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--bg-2);
+}
+
+/* 修复：上面这条(3个类)优先级压过 .tab.active(2个类)，把选中子页签的蓝底盖成了白底，
+   但文字仍是白色 → 白底白字看不见（Nintendo / Retro 的主机子页签选中后消失）。
+   选中态显式加回来，优先级更高。 */
+.tabs.sub .tab.active,
+.tabs.sub .tab.active:hover {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.tabs.sub .tab.active small {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- RA 概览条（只在看 RA 数据时出现） ---------- */
+.ra-overview {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.ra-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.ra-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-0);
+}
+
+.ra-user {
+  font-size: 12px;
+  color: var(--text-1);
+  background: var(--bg-2);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.ra-time {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-left: auto;
+}
+
+.ra-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ra-stat {
+  flex: 1 1 118px;
+  min-width: 108px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.ra-sv {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-0);
+  line-height: 1.3;
+}
+
+.ra-sv small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.ra-sl {
+  font-size: 12px;
+  color: var(--text-1);
+  margin-top: 2px;
+}
+
+.ra-hosts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ra-hosts .p-tag b {
+  font-weight: 700;
+}
+
+/* ---------- 导入页：RA 本地导入面板 ---------- */
+.ra-steps {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.ra-step {
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.8;
+}
+
+.ra-step b {
+  color: var(--text-0);
+}
+
+.ra-step code {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+
+.ra-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 8px 22px;
+}
+
+.ra-links .src-btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
+.ra-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ra-actions .hint {
+  margin-top: 0;
+}
+
+/* 输入框 + 按钮一行（RA 一键拉取） */
+.ra-actions .db-input {
+  height: 34px;
+  font-size: 13px;
+}
+
+/* ---------- Xbox 官方游玩时长子区块 ---------- */
+.sub-block {
+  margin-top: 14px;
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+
+.sub-block .sb-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 6px;
+}
+
+/* 按钮排一行，挤不下自动换行 */
+#pt-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+#pt-actions .src-btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* 备用方案折叠块：平时收起来，不占地方 */
+.ra-fallback {
+  margin-top: 12px;
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+
+.ra-fallback summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-1);
+  list-style: none;
+  user-select: none;
+}
+
+.ra-fallback summary::-webkit-details-marker {
+  display: none;
+}
+
+.ra-fallback summary::before {
+  content: '▸ ';
+  color: var(--text-2);
+}
+
+.ra-fallback[open] summary::before {
+  content: '▾ ';
+}
+
+.ra-fallback .ra-step {
+  margin: 8px 0 0;
+}
+
+/* 拉取结果里「自动刷新了哪几款」的小清单 */
+.ra-refreshed {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-2, rgba(0, 0, 0, 0.02));
+  overflow: hidden;
+}
+
+.ra-refreshed-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ra-refreshed-row:last-child {
+  border-bottom: 0;
+}
+
+.ra-refreshed-title {
+  color: var(--text-1);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ra-refreshed-row .muted {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+/* ===========================================================================
+ * 游玩日历（Nintendo）
+ * 任天堂没有成就系统：详情页的成就位置改放「这款游戏的游玩日历」；
+ * 游戏库顶部再放一个「总日历」（所有任天堂游戏按天汇总），位置同 RA 概览条。
+ * ======================================================================== */
+
+.nintendo-overview {
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--bg-3);
+}
+
+.cal-wrap { margin-top: 4px; }
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.cal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-0);
+  min-width: 92px;
+  text-align: center;
+}
+
+.cal-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cal-nav:hover:not(:disabled) { background: var(--bg-3); color: var(--text-0); }
+.cal-nav:disabled { opacity: .35; cursor: default; }
+
+.cal-sum {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 26px);
+  gap: 3px;
+  justify-content: flex-start;
+}
+
+.cal-w {
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: center;
+  padding-bottom: 1px;
+}
+
+.cal-cell {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  background: var(--bg-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-cell.empty { background: transparent; }
+
+/* 热力档位：玩得越久颜色越深（任天堂红） */
+.cal-cell.lv1 { background: #ffe0e2; color: #8a2b33; }
+.cal-cell.lv2 { background: #ffb3b8; color: #7a1f27; }
+.cal-cell.lv3 { background: #f9696f; color: #fff; }
+.cal-cell.lv4 { background: #d1192a; color: #fff; }
+
+.cal-cell .cal-m {
+  display: none;   /* 格子缩小后放不下当天时长，悬停提示里看 */
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.cal-legend .cal-cell {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- 总日历：最近 N 天柱状图（一天一根，高度=当天时长） ---- */
+.dbar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.dbar-toggle { display: inline-flex; gap: 4px; }
+
+.dbar-toggle .cal-nav {
+  width: auto;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-radius: 999px;
+}
+
+.dbar-toggle .cal-nav.on {
+  background: var(--accent, #e60012);
+  border-color: transparent;
+  color: #fff;
+}
+
+.dbar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 74px;
+}
+
+.dbar-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  height: 100%;
+}
+
+.dbar {
+  width: 100%;
+  max-width: 16px;
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(180deg, #f9696f, #d1192a);
+  min-height: 4px;
+}
+
+.dbar.zero {
+  background: var(--bg-3);
+  min-height: 3px;
+}
+
+.dbar-l {
+  font-size: 9px;
+  line-height: 12px;
+  height: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.dbar-col { cursor: pointer; }
+.dbar-col:hover .dbar { filter: brightness(1.12); }
+.dbar-col.picked .dbar { outline: 2px solid var(--accent, #e60012); outline-offset: 1px; }
+
+.day-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ---- 点某一天 → 那天的具体游玩记录 ---- */
+.day-panel {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--bg-3);
+}
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.day-date { font-weight: 600; color: var(--text-0); }
+.day-total { color: var(--text-2); }
+
+.day-close {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--bg-3);
+  background: var(--bg-1);
+  color: var(--text-2);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.day-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.day-row:hover { background: var(--bg-3); }
+
+.day-cover {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--bg-3);
+  flex: 0 0 auto;
+}
+
+.day-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-0);
+}
+
+.day-pl { font-size: 10px; flex: 0 0 auto; }
+
+.day-min {
+  flex: 0 0 auto;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+ * 跨平台统一时间轴（生涯页）
+ * 不合并游戏身份：同一天玩了什么，各平台并列列出来。
+ * ======================================================== */
+
+.tl-note {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-3);
+}
+
+.tl-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tl-day { margin-bottom: 14px; }
+
+.tl-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.tl-d {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-w { font-size: 11px; color: var(--text-3); }
+
+.tl-sum {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.tl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* 月视图里「玩过 N 天」的小尾巴 */
+.tl-days {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ===========================================================================
+ * 分享成长图弹窗（canvas 生成的 PNG）
+ * ======================================================== */
+
+.gp-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.gp-panel {
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.gp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--bg-3);
+}
+
+.gp-x {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-2);
+}
+
+.gp-img {
+  display: block;
+  max-height: 74vh;
+  width: auto;
+  object-fit: contain;
+  background: var(--bg-3);
+}
+
+.gp-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--bg-3);
+}
+
+/* ===========================================================================
+ * 首次游玩视图（小黑盒同款）：按「第一次玩」的月份分组，封面卡片网格
+ * ======================================================== */
+
+.tl-date-head { margin-bottom: 8px; }
+
+/* 首次游玩：年份分隔（一次加载一年，年内按月分组） */
+.tl-yearblock { margin-bottom: 10px; }
+
+.tl-year {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-left: 3px solid #e60012;
+  background: var(--bg-3);
+  border-radius: 0 8px 8px 0;
+}
+
+.tl-y {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+}
+
+.fc-card {
+  cursor: pointer;
+  min-width: 0;
+}
+
+.fc-imgwrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* 任天堂给的是方图（512×512），裁成横条会把上下切掉 → 用 1:1 完整展示 */
+.fc-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  object-fit: cover;
+  transition: transform .18s;
+}
+
+.fc-card:hover .fc-img { transform: scale(1.04); }
+
+/* 时长角标：右下角，深色底白字（和图上任何颜色都能拉开对比） */
+.fc-min {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-name {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tl-row:hover { background: var(--bg-3); }
+
+.tl-cover {
+  width: 104px;
+  height: 104px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--bg-3);
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.tl-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-0);
+}
+
+.tl-pl { font-size: 10px; flex: 0 0 auto; }
+
+.tl-min {
+  flex: 0 0 auto;
+  min-width: 52px;
+  text-align: right;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 时长未知：该平台只给「最后游玩日期」，不给当天时长 */
+.tl-unknown { color: var(--text-3); cursor: help; }
+
+.tl-more {
+  margin-top: 6px;
+  width: 100%;
+}
+
+/* ===========================================================================
+ * 最近在玩（生涯页）
+ * 和时间轴互补：按「游戏」聚合，看最近哪些还在碰。
+ * ======================================================== */
+
+.tl-lb { color: var(--text-2); font-size: 13px; }
+
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.rp-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-3);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.rp-card:hover { background: var(--bg-4, var(--bg-2)); filter: brightness(1.04); }
+
+.rp-cover {
+  width: 104px;
+  height: 104px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--bg-2);
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.rp-body { flex: 1 1 auto; min-width: 0; }
+
+.rp-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.rp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.rp-pl { font-size: 10px; flex: 0 0 auto; }
+
+.rp-when {
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-stat b { color: var(--text-0); font-weight: 600; }
+
+/* 该平台给不出「最近累计」——如实变灰，别装作有数据 */
+.rp-stat.dim { color: var(--text-3); }
+
+.rp-stat i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-3);
+  cursor: help;
+  border-bottom: 1px dotted var(--text-3);
+}
+
+/* ===========================================================================
+ * 游戏时长排行（生涯页）
+ * 每行 = 游戏 × 平台，同名不合并（项目铁律）。
+ * ======================================================== */
+
+.top-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.top-row:hover { background: var(--bg-3); }
+
+.top-rank {
+  flex: 0 0 26px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 前三名给点颜色（金 / 银 / 铜），但克制：只染数字 */
+.top-rank.t1 { color: #c9a227; }
+.top-rank.t2 { color: #8e9aa6; }
+.top-rank.t3 { color: #b07a4a; }
+
+/* 封面统一对齐游戏库列表行（104），用户 2026-10-19：三处大小不一看着乱 */
+.top-cover {
+  width: 104px;
+  height: 104px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--bg-3);
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.top-main { flex: 1 1 auto; min-width: 0; }
+
+.top-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.top-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.top-pl { font-size: 10px; flex: 0 0 auto; }
+
+.top-min {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.top-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.top-fill {
+  height: 100%;
+  border-radius: 3px;
+  opacity: .85;
+}
+
+/* ===========================================================================
+ * 手机适配（2026-10-19 起）
+ * 断点：≤760px 视为手机（横向 ≤420px 再给一档更窄的）
+ * 思路：纯 CSS 改造，不动 HTML 结构 —— 桌面还是桌面样，手机换一套排版。
+ *   ① 侧栏 从「竖着占半屏」→「顶部横向导航条」，吸顶、内容挤了可横滑
+ *   ② 内容区 单列铺满，边距收紧
+ *   ③ 卡片网格降列（KPI 两列）
+ *   ④ 游戏行 → 封面 + 右侧两行信息 + 整行成就条
+ *   ⑤ 触控目标放大到 ≥40px
+ * ======================================================== */
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+
+  /* ---------- 侧栏 → 顶部横向导航条 ---------- */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    overflow-x: auto;            /* 内容多时可横向滑动，不挤压 */
+    scrollbar-width: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.94);
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+  html.has-bg .sidebar { background: rgba(255, 255, 255, 0.92); }
+  .logo { padding: 0; font-size: 14px; letter-spacing: 0; white-space: nowrap; flex: 0 0 auto; }
+  .logo .dot { width: 9px; height: 9px; margin-right: 6px; }
+  .sidebar nav { display: flex; gap: 6px; flex: 0 0 auto; }
+  .nav-btn { display: inline-block; width: auto; margin: 0; padding: 8px 12px; min-height: 40px; font-size: 14px; white-space: nowrap; }
+  .sidebar-foot { display: none; }
+  /* 数据源切换：紧跟导航排成一行（不能丢功能），同样可横滑 */
+  .src-switch { margin-top: 0; padding: 0 0 0 10px; border-top: 0; border-left: 1px solid var(--border); display: flex; gap: 6px; flex: 0 0 auto; }
+  .src-title { display: none; }
+  .src-btn { width: auto; margin-bottom: 0; padding: 8px 10px; min-height: 36px; font-size: 12px; white-space: nowrap; }
+
+  /* ---------- 内容区：单列铺满 ---------- */
+  .main { padding: 14px 12px 28px; }
+  #page-library, #page-career { max-width: none; margin: 0; }
+
+  /* 生涯指标卡：两列 */
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { padding: 13px 12px 11px; border-radius: 12px; }
+  .kpi .k-value { font-size: 23px; margin-top: 4px; }
+
+  .panel { padding: 14px; margin-bottom: 14px; border-radius: 12px; }
+  .panel h3 { font-size: 14px; margin-bottom: 12px; }
+
+  /* 横幅（游戏库顶部大卡） */
+  .hero { min-height: 0; }
+  .hero .hero-inner { gap: 12px; padding: 12px; }
+  .hero .hero-cover { width: 92px; height: 92px; font-size: 26px; }
+
+  /* 页签：横向滚动不换行（换行会把列表顶下去） */
+  .tabs, .tabs.sub { flex-wrap: nowrap; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar, .tabs.sub::-webkit-scrollbar { display: none; }
+  .tab { padding: 8px 13px; min-height: 38px; }
+
+  /* ---------- 游戏库列表行：封面 + 右侧两行 ---------- */
+  .game-row {
+    grid-template-columns: 68px minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 10px 12px;
+  }
+  .game-row > .cover { grid-column: 1; grid-row: 1 / span 2; width: 68px; height: 68px; font-size: 26px; }
+  .game-row > .g-title { grid-column: 2; grid-row: 1; min-width: 0; }
+  .game-row > .last-played { grid-column: 3; grid-row: 1; justify-self: end; text-align: right; font-size: 11px; }
+  .game-row > .platform-tags { grid-column: 2; grid-row: 2; }
+  .game-row > .time { grid-column: 3; grid-row: 2; justify-self: end; }
+  .game-row > .ach-block { grid-column: 1 / span 3; grid-row: 3; }
+
+  /* 生涯页三条列表的封面统一缩小（跟列表行保持同尺寸，用户不喜欢大小不一） */
+  .rp-cover, .tl-cover, .top-cover { width: 68px; height: 68px; border-radius: 10px; }
+  .tl-row, .top-row { gap: 10px; padding: 8px; }
+
+  /* ---------- 弹层 / 表单：触屏友好 ---------- */
+  .modal-mask { padding: 10px 8px; }
+  .modal { padding: 16px 14px 20px; border-radius: 14px; }
+  .steam-panel input, .db-input, .modal input, .modal select, .modal textarea { min-height: 42px; font-size: 15px; }
+  .db-bar { flex-wrap: wrap; gap: 8px; }
+  .db-bar .db-input:first-child { min-width: 0; flex: 1 1 100%; }
+
+  /* 触屏没有 hover：点完别留着一层高亮色 */
+  .game-row:hover, .tl-row:hover, .top-row:hover { transform: none; }
+  .hero:hover { transform: none; box-shadow: none; }
+}
+
+/* 更窄的机型（iPhone SE 一类）：再压一档 */
+@media (max-width: 420px) {
+  .kpi .k-value { font-size: 21px; }
+  .game-row { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .game-row > .cover { width: 56px; height: 56px; }
+  .rp-cover, .tl-cover, .top-cover { width: 56px; height: 56px; }
+  .hero .hero-cover { width: 76px; height: 76px; }
+}
+
+/* ---------------------------------------------------------------------------
+ * 首次游玩视图 · 手机改版（2026-10-19 用户反馈：一个图标占大半个屏幕）
+ * 参考小黑盒：一行 3 个封面 + 每组上面已有「N 月」标题；手机上不放名字。
+ * ------------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .fc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 8px;
+  }
+  .fc-name { display: none; }
+  .fc-min {
+    font-size: 10px;
+    padding: 1px 5px;
+    right: 4px;
+    bottom: 4px;
+    border-radius: 5px;
+  }
+  .tl-day { margin-bottom: 16px; }
+  .tl-date { margin-bottom: 7px; }
+  .tl-note { font-size: 12px; }
+}
+
+/* ---------------------------------------------------------------------------
+ * 游戏详情 · 按月柱状图（2026-10-20 改版，取代格子月历）
+ * 格子月历天生只有 7 列宽（~260px），在宽弹窗里缩成一小块、手机上又太小；
+ * 柱状图与主页「Nintendo·游玩日历」同一套视觉，宽度自适应，手机端也清晰。
+ * ------------------------------------------------------------------------- */
+.gcal-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 96px;
+}
+.gcal-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.gcal-bar {
+  width: 100%;
+  max-width: 18px;
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(180deg, #f9696f, #d1192a);
+  min-height: 5px;
+}
+.gcal-bar.zero { background: var(--bg-3); min-height: 3px; }
+.gcal-col:hover .gcal-bar:not(.zero) { filter: brightness(1.12); }
+.gcal-l {
+  font-size: 9px;
+  line-height: 12px;
+  height: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 760px) {
+  .gcal-row { gap: 2px; height: 80px; }
+  .gcal-bar { max-width: 14px; }
+}
+
+/* ============================ 手机（屏幕账本） ============================
+ * 图标是 144×144 透明 PNG（圆角已烘在图里）→ 底色用白，避免随机色块从圆角漏出。
+ * 其余（正方形填满 / object-fit:cover）与全平台封面规则一致，不自创比例。
+ * ======================================================================== */
+.cover.ph { background: #fff !important; }
+.cover.ph img { object-fit: cover; }
+
+.ph-toggle-row {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 2px 0; flex-wrap: wrap;
+}
+.ph-btn {
+  padding: 6px 12px; font-size: 13px; cursor: pointer;
+  background: var(--bg-2); color: var(--text-1);
+  border: 1px solid var(--border); border-radius: 8px;
+  transition: all .15s;
+}
+.ph-btn:hover { background: var(--bg-3); color: var(--text-0); }
+.ph-btn.on { border-color: #d98c00; color: #d98c00; }
+.ph-btn:disabled { opacity: .55; cursor: default; }
+.ph-toggle-tip { font-size: 12px; color: var(--text-2); }
+
+/* 手机页签底部的「已隐藏」栏：隐藏的应用从列表里消失了，这里给个找回入口 */
+.ph-hidden-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin: 14px 2px 4px; padding: 10px 12px;
+  background: var(--bg-2); border: 1px dashed var(--border); border-radius: 10px;
+}
+.ph-hidden-label { font-size: 12px; color: var(--text-2); margin-right: 2px; }
+.ph-hidden-chip {
+  padding: 3px 10px; font-size: 12px; cursor: pointer;
+  background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 999px;
+  transition: all .15s;
+}
+.ph-hidden-chip:hover { color: var(--text-0); border-color: var(--accent); }
+
+
+
+/* 手机详情页：分类手改（游戏 / 应用）—— 胶囊分段钮，颜色区分两种分类 */
+.ph-cat-label { font-size: 12px; color: var(--text-2); }
+.ph-cat-seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 999px;
+}
+.ph-cat-btn {
+  padding: 5px 16px; font-size: 13px; cursor: pointer;
+  background: transparent; color: var(--text-2); border: 0; border-radius: 999px;
+  transition: all .18s;
+}
+/* 前面的彩色小圆点：一眼区分游戏（紫）/ 应用（蓝） */
+.ph-cat-btn::before {
+  content: ''; display: inline-block; width: 7px; height: 7px;
+  border-radius: 50%; margin-right: 6px; vertical-align: 1px;
+  background: var(--border); transition: background .18s;
+}
+.ph-cat-btn[data-ph-cat="游戏"]::before { background: #7c5cff; }
+.ph-cat-btn[data-ph-cat="应用"]::before { background: #2f7cf6; }
+.ph-cat-btn:hover { color: var(--text-0); }
+.ph-cat-btn.active { color: #fff; }
+.ph-cat-btn.active[data-ph-cat="游戏"] { background: #7c5cff; box-shadow: 0 1px 5px rgba(124, 92, 255, .35); }
+.ph-cat-btn.active[data-ph-cat="应用"] { background: #2f7cf6; box-shadow: 0 1px 5px rgba(47, 124, 246, .35); }
+.ph-cat-btn.active::before { background: #fff; }
+
+/* ==================== 线上只读版（GH_STATIC） ====================
+ * 发布脚本把 index.html 里 window.GH_STATIC 改成 true 后，
+ * app.js 会给 body 加 .gh-static，隐藏一切会写数据的功能，只留浏览。 */
+body.gh-static .nav-btn[data-page="import"] { display: none !important; }
+body.gh-static .ph-toggle-row { display: none !important; }
+body.gh-static .ph-hidden-bar { display: none !important; }
+body.gh-static .src-switch { display: none !important; }
+body.gh-static .sidebar-foot { display: none !important; }
+body.gh-static .nav-btn[data-page="db"] { display: none !important; }
+body.gh-static #panel-year,
+body.gh-static #panel-week { display: none !important; }
+body.gh-static .cn-item[data-panel="panel-year"],
+body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
