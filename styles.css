@@ -1109,8 +1109,7 @@ select.year-select {
 ::-webkit-scrollbar-thumb:hover { background: #8d9ab5; }
 
 /* 数据源切换 */
-.src-switch { margin-top: 14px; padding: 10px 12px; border-top: 1px solid var(--border); }
-.src-title { font-size: 11px; color: var(--text-2); letter-spacing: .08em; margin-bottom: 7px; }
+/* （原侧栏数据源切换 .src-switch 已随 HTML 一并移除，2026-10-22 用户定：游戏库页内页签负责切源） */
 .src-btn {
   display: block; width: 100%; margin-bottom: 6px; padding: 7px 10px;
   background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border);
@@ -1488,6 +1487,27 @@ select.year-select {
 .db-input:focus { border-color: var(--accent); }
 .db-bar .db-input:first-child { flex: 1; min-width: 220px; }
 .db-select { width: auto; }
+
+/* ===== 导入页分区导航（板块多，吸顶方便定位） ===== */
+.imp-nav {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin: 0 0 14px; padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: sticky; top: 10px; z-index: 30;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.imp-nav-btn {
+  border: 1px solid transparent; background: transparent;
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 13px; color: var(--text-1); cursor: pointer; white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.imp-nav-btn:hover { background: var(--bg-2); color: var(--text-0); }
+.imp-nav-btn.active { background: #e6efff; color: var(--accent); }
+#page-import .panel { scroll-margin-top: 72px; }   /* 锚点滚动时给吸顶导航留白 */
 .db-stats { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-1); font-size: 13px; margin-bottom: 12px; }
 .db-stats b { color: var(--text-0, #1d2433); font-size: 15px; }
 .db-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: var(--bg-2); margin-bottom: 10px; cursor: pointer; }
@@ -1511,24 +1531,19 @@ select.year-select {
 .db-res .r-sub { font-size: 12px; color: var(--text-1); }
 .db-manual { border-top: 1px solid var(--border, #e3e8f2); padding-top: 10px; margin-top: 6px; }
 
-/* ===== 游戏数据库：详情页 ===== */
-.db-d-top { margin-bottom: 12px; }
-.db-d-card { display: flex; gap: 20px; padding: 18px; border-radius: 12px; background: var(--bg-2); }
-.db-d-cover { width: 200px; height: 280px; object-fit: cover; border-radius: 10px; background: #dfe5f2; flex: none; box-shadow: 0 2px 10px rgba(25,45,90,.16); }
-.db-d-main { flex: 1; min-width: 0; }
-.db-d-name { margin: 0 0 8px; font-size: 22px; color: var(--text-0, #1d2433); }
-.db-d-line { font-size: 13px; color: var(--text-1); margin: 6px 0; }
-.db-d-bit { display: inline-block; margin-right: 16px; }
-.db-d-desc { font-size: 13px; line-height: 1.7; color: var(--text-1); margin: 10px 0; padding: 10px 12px; background: var(--bg-1, #f6f8fd); border-radius: 8px; }
-.db-d-plats { margin-top: 12px; }
-.db-d-plat { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; padding: 8px 12px; border-radius: 8px; background: var(--bg-1, #f6f8fd); margin-bottom: 6px; }
-.db-d-plat b { color: var(--text-0, #1d2433); }
-.db-d-plat span { color: var(--text-1); }
-.db-d-edit { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--bg-2); }
-.db-d-edit-title { font-size: 13px; color: var(--text-1); margin-bottom: 10px; }
-.db-d-edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.db-d-edit-row label { width: 52px; font-size: 13px; color: var(--text-1); flex: none; text-align: right; }
-.db-d-edit-row input { flex: 1; max-width: 420px; }
+/* ===== 游戏数据库：编辑资料弹窗 ===== */
+.db-edit-modal { max-width: 560px; max-height: 86vh; overflow: auto; }
+.db-e-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.db-e-row label { width: 60px; flex: none; text-align: right; font-size: 13px; color: var(--text-1); padding-top: 8px; }
+.db-e-row .db-input { flex: 1; min-width: 0; width: auto; }
+.db-e-row textarea.db-input { min-height: 64px; resize: vertical; line-height: 1.5; }
+.db-edit-foot { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border, #e3e8f2); }
+.db-edit-foot .src-btn { width: auto; margin: 0; }
+/* 弹窗头部：封面缩略图 + 名字 + 平台 */
+.db-e-head { display: flex; gap: 12px; align-items: center; margin: 2px 0 12px; }
+.db-e-head img, .db-e-cover { width: 44px; height: 60px; object-fit: cover; border-radius: 6px; background: #dfe5f2; flex: none; }
+.db-e-hn { font-size: 16px; font-weight: 600; color: var(--text-0, #1d2433); }
+.db-e-hp { font-size: 12px; color: var(--text-1); margin-top: 2px; }
 
 /* ===========================================================================
  * RetroAchievements（老游戏 / 模拟器）
@@ -2494,11 +2509,11 @@ select.year-select {
   .logo .dot { width: 9px; height: 9px; margin-right: 6px; }
   .sidebar nav { display: flex; gap: 6px; flex: 0 0 auto; }
   .nav-btn { display: inline-block; width: auto; margin: 0; padding: 8px 12px; min-height: 40px; font-size: 14px; white-space: nowrap; }
-  .sidebar-foot { display: none; }
-  /* 数据源切换：紧跟导航排成一行（不能丢功能），同样可横滑 */
-  .src-switch { margin-top: 0; padding: 0 0 0 10px; border-top: 0; border-left: 1px solid var(--border); display: flex; gap: 6px; flex: 0 0 auto; }
-  .src-title { display: none; }
+  .sidebar-foot { display: none; }   /* 元素已随 HTML 移除，此行留作兼容 */
+  /* 数据源切换已移除：游戏库页内页签负责切源（2026-10-22 用户定） */
   .src-btn { width: auto; margin-bottom: 0; padding: 8px 10px; min-height: 36px; font-size: 12px; white-space: nowrap; }
+  /* 导入页分区导航：吸顶时躲开顶部横条 */
+  .imp-nav { top: 62px; }
 
   /* ---------- 内容区：单列铺满 ---------- */
   .main { padding: 14px 12px 28px; }
@@ -2714,3 +2729,70 @@ body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
 .hot-line { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-1); line-height: 1.7; }
 .hot-line .hot-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .year-note { margin-top: 14px; font-size: 12px; color: var(--text-3); line-height: 1.6; }
+
+/* ==================== Playnite / 模拟器（2026-10-22 接入） ==================== */
+.pn-threshold-row { align-items: center; flex-wrap: wrap; }
+.pn-num { width: 76px; min-height: 0; padding: 5px 8px; }
+
+.pn-manage { margin-top: 8px; max-height: 480px; overflow-y: auto; }
+
+.pn-head, .pn-row, .pn-warn-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 8px;
+}
+.pn-row { background: var(--bg-2); margin-bottom: 5px; }
+.pn-row:hover { background: var(--bg-3); }
+.pn-head { color: var(--text-3); font-size: 11px; padding-bottom: 2px; }
+.pn-head :nth-child(1) { flex: 1 1 22%; }
+.pn-head :nth-child(2) { flex: 0 0 12%; }
+.pn-head :nth-child(3) { flex: 0 0 20%; }
+.pn-head :nth-child(4) { flex: 0 0 10%; }
+.pn-head :nth-child(5) { flex: 1 1 30%; }
+
+.pn-name {
+  flex: 1 1 22%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px; color: var(--text-0);
+}
+.pn-min { flex: 0 0 12%; font-size: 12px; color: var(--text-1); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pn-row select.pn-sel { flex: 0 0 20%; min-width: 0; padding: 4px 6px; font-size: 12px; min-height: 0; }
+.pn-inc { flex: 0 0 10%; font-size: 12px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+.pn-inc input { vertical-align: -2px; margin-right: 3px; }
+.pn-note {
+  flex: 1 1 30%; min-width: 0; min-height: 0; padding: 4px 8px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg-1); color: var(--text-1);
+}
+.pn-ov { margin-left: 5px; font-size: 11px; }
+
+.pn-warn {
+  margin-bottom: 12px; padding: 8px 10px;
+  background: #fff8e8; border: 1px solid #f0dcb0; border-radius: 10px;
+}
+.pn-warn-title { font-size: 12px; color: #9a6b00; margin-bottom: 6px; }
+.pn-warn-row { padding: 3px 0; border-bottom: 0.5px dashed #f0dcb0; }
+.pn-warn-row:last-child { border-bottom: none; }
+.pn-warn-row .pn-name { color: #7a5400; }
+.pn-warn-row .pn-min { flex: 0 0 auto; margin-left: auto; color: #9a6b00; }
+
+@media (max-width: 760px) {
+  .pn-head { display: none; }
+  .pn-row { flex-wrap: wrap; }
+  .pn-row .pn-name { flex: 1 1 100%; white-space: normal; }
+  .pn-row .pn-min { flex: 0 0 auto; }
+  .pn-row select.pn-sel { flex: 1 1 30%; }
+  .pn-row .pn-inc { flex: 0 0 auto; }
+  .pn-row .pn-note { flex: 1 1 100%; }
+  .pn-manage { max-height: 380px; }
+}
+
+/* ==================== 统一库面板（2026-10-22 接入） ==================== */
+.ulib-key-row { align-items: center; flex-wrap: wrap; }
+.ulib-key { max-width: 380px; min-height: 0; padding: 5px 10px; font-size: 13px; }
+
+/* ==================== 实机存档实拍（DS 卡带特例，2026-10-24） ==================== */
+.proof-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.proof-img {
+  height: 300px; max-width: 100%; object-fit: contain;
+  border-radius: 8px; border: 1px solid var(--line, #ddd);
+  background: var(--bg-2, #f5f5f5); cursor: zoom-in;
+}
+@media (max-width: 760px) { .proof-img { height: 200px; } }

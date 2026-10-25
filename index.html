@@ -46,16 +46,7 @@
         <button class="nav-btn" data-page="db">游戏数据库</button>
         <button class="nav-btn" data-page="import">导入</button>
       </nav>
-      <div class="sidebar-foot">本地数据 · 个人游戏库<br>封面与图标存于 assets/</div>
-      <div class="src-switch">
-        <div class="src-title">数据源</div>
-        <button class="src-btn" data-src="nintendo" id="src-nintendo-btn">我的 Nintendo</button>
-        <button class="src-btn" data-src="xbox" id="src-xbox-btn">我的 Xbox</button>
-        <button class="src-btn active" data-src="steam" id="src-steam-btn">我的 Steam</button>
-        <button class="src-btn" data-src="retro" id="src-retro-btn">我的 Retro</button>
-        <button class="src-btn" data-src="epic" id="src-epic-btn">我的 Epic</button>
-        <button class="src-btn" data-src="phone" id="src-phone-btn">我的手机</button>
-      </div>
+      <!-- 数据源切换已移到「游戏库」页内页签（app.js 注入），侧栏不再重复一份 -->
     </aside>
 
     <!-- 主内容区 -->
@@ -89,10 +80,7 @@
           <input id="db-search" class="db-input" type="text" placeholder="搜游戏名 / 别名（中英文都行）" autocomplete="off">
           <select id="db-filter" class="db-input db-select">
             <option value="all">全部平台</option>
-            <option value="steam">仅 Steam</option>
-            <option value="xbox">仅 Xbox</option>
-            <option value="multi">跨平台（多平台同一款）</option>
-            <option value="nometadata">元数据待补全</option>
+            <!-- 其余平台选项由 app.js 按库内实际数据动态生成（含 NDS / 3DS / GBA 等主机） -->
           </select>
           <select id="db-sort" class="db-input db-select">
             <option value="name">按名称</option>
@@ -123,13 +111,26 @@
             <div class="page-sub">从外部平台同步你的游戏数据</div>
           </div>
         </div>
-        <div class="panel">
+        <!-- 分区导航：点击跳到对应板块（板块多，方便定位） -->
+        <div class="imp-nav" id="imp-nav">
+          <button class="imp-nav-btn active" data-target="imp-steam">Steam</button>
+          <button class="imp-nav-btn" data-target="imp-xbox">Xbox</button>
+          <button class="imp-nav-btn" data-target="imp-epic">Epic</button>
+          <button class="imp-nav-btn" data-target="imp-retro">Retro</button>
+          <button class="imp-nav-btn" data-target="imp-nintendo">Nintendo</button>
+          <button class="imp-nav-btn" data-target="imp-phone">手机</button>
+          <button class="imp-nav-btn" data-target="imp-playnite">Playnite</button>
+          <button class="imp-nav-btn" data-target="imp-ulib">统一库</button>
+          <button class="imp-nav-btn" data-target="imp-appearance">外观</button>
+          <button class="imp-nav-btn" data-target="imp-assets">图片补齐</button>
+        </div>
+        <div class="panel" id="imp-steam">
           <h3>连接 Steam</h3>
           <div id="steam-status" class="muted">检测中…</div>
           <div id="steam-panel" class="steam-panel"></div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="imp-xbox">
           <h3>连接 Xbox</h3>
           <div id="xbox-status" class="muted">检测中…</div>
           <div id="xbox-panel" class="steam-panel"></div>
@@ -146,7 +147,7 @@
         </div>
 
         <!-- Epic Games：需要本人登录一次（Epic 没有面向玩家的公开 API） -->
-        <div class="panel">
+        <div class="panel" id="imp-epic">
           <h3>连接 Epic Games</h3>
           <div id="epic-status" class="muted">检测中…</div>
           <div id="epic-actions"></div>
@@ -156,7 +157,7 @@
         </div>
 
         <!-- RetroAchievements：老游戏 / Retro 成就（官方 API，填用户名即可） -->
-        <div class="panel">
+        <div class="panel" id="imp-retro">
           <h3>连接 RetroAchievements（老游戏 · Retro）</h3>
           <div id="ra-status" class="muted">检测中…</div>
 
@@ -193,7 +194,7 @@
         </div>
 
         <!-- Nintendo：Switch 游玩记录（Nintendo Store app 同源接口，登录一次就行） -->
-        <div class="panel">
+        <div class="panel" id="imp-nintendo">
           <h3>连接 Nintendo（Switch 游玩记录）</h3>
           <div id="ns-status" class="muted">检测中…</div>
 
@@ -228,7 +229,7 @@
           <div id="ns-msg" class="hint">这一步只负责授权。登录成功后我们再一起看能拿到哪些数据，再决定怎么存、怎么展示。</div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="imp-phone">
           <h3>导入手机使用数据（屏幕账本）</h3>
           <div id="ph-status" class="muted">检测中…</div>
 
@@ -256,7 +257,71 @@
           <div id="ph-msg" class="hint"></div>
         </div>
 
-        <div class="panel">
+        <!-- Playnite / 模拟器：双击导出脚本 + 本地计数器重建两个页签（全程零联网） -->
+        <div class="panel" id="imp-playnite">
+          <h3>Playnite / 模拟器（本地启动器）</h3>
+          <div id="pn-status" class="muted">检测中…</div>
+
+          <div class="ra-steps">
+            <div class="ra-step"><b>①</b> 双击 <code>tools\export_playnite.bat</code>，把 Playnite 游戏库导出到本程序（导过一次后，库有变化再导一次即可）。</div>
+            <div class="ra-step"><b>②</b> 点下面的按钮重建页签：「模拟器」用 RetroArch / PCSX2 / Dolphin 的本地计数器（RA 页签已记录的不会重复出现）；「PC」取 Playnite 里 Steam / Xbox / Epic 之外的本地游戏。</div>
+            <div class="ra-step muted">低于门槛的试玩记录会被过滤（默认模拟器 30 分钟 / PC 60 分钟，可改）。归属错了点开下方「管理列表」手动调整——<b>手改永远赢，重新构建不覆盖</b>。</div>
+          </div>
+
+          <div class="ra-actions">
+            <button class="src-btn" id="pn-build-emu" type="button">重建模拟器页签</button>
+            <button class="src-btn" id="pn-build-pc" type="button">重建 PC 页签</button>
+            <span id="pn-build-name" class="hint"></span>
+          </div>
+
+          <div class="ra-actions pn-threshold-row">
+            <span class="hint" style="margin-top:0">门槛（分钟）：</span>
+            <input id="pn-th-emu" class="db-input pn-num" type="number" min="0" step="5" title="模拟器页签门槛">
+            <span class="hint" style="margin-top:0">模拟器 /</span>
+            <input id="pn-th-pc" class="db-input pn-num" type="number" min="0" step="5" title="PC 页签门槛">
+            <span class="hint" style="margin-top:0">PC</span>
+            <button class="src-btn" id="pn-th-save" type="button">保存设置并重建</button>
+          </div>
+          <div class="ra-actions pn-threshold-row">
+            <span class="hint" style="margin-top:0">PC 成就文件夹：</span>
+            <input id="pn-ach-folder" class="db-input" type="text" style="flex:1;min-width:220px" placeholder="AchievementWatcher 导出目录（留空 = 不导入成就）" title="PC 成就数据所在文件夹">
+            <button class="src-btn" id="pn-ach-browse" type="button" style="display:none">浏览…</button>
+          </div>
+          <div id="pn-msg" class="hint">两个页签都建成后，在游戏库顶部页签里查看。</div>
+
+          <details class="ra-fallback" id="pn-manage-wrap">
+            <summary>管理列表：手动调整每款游戏的归属 / 捞回被过滤的 / 查看时长差异</summary>
+            <div class="ra-step muted">自动归属只是预填：下拉框改成 PC / 模拟器 / Steam / Xbox / Epic / 隐藏 即覆盖；「捞回」= include，被门槛滤掉的也会显示；备注只给自己看。改完自动重建两个页签。</div>
+            <div id="pn-manage" class="pn-manage"><div class="hint">尚未加载，展开后自动读取。</div></div>
+          </details>
+        </div>
+
+        <!-- 统一库：跨平台资料汇总（本地）+ 联网补缺封面与中文名 -->
+        <div class="panel" id="imp-ulib">
+          <h3>统一库（跨平台资料）</h3>
+          <div id="ulib-status" class="muted">检测中…</div>
+
+          <div class="ra-steps">
+            <div class="ra-step"><b>①</b> 「汇总本地资料」把各平台数据里的官方 id、封面、名称合并进统一库（全在本机算，新游戏重建页签时也会自动汇总）。</div>
+            <div class="ra-step"><b>②</b> 「补全封面与资料」只对还缺封面 / 官方中文名的条目联网（当前就是 PC 与模拟器那几款）：先查 Steam（免 key），查不到再查 SteamGridDB。跑一半中断没关系，再点一次从断点继续。</div>
+          </div>
+
+          <div class="ra-actions">
+            <button class="src-btn" id="ulib-build" type="button">汇总本地资料</button>
+            <button class="src-btn" id="ulib-enrich" type="button">补全封面与资料（联网）</button>
+            <span id="ulib-progress" class="hint"></span>
+          </div>
+
+          <div class="ra-actions ulib-key-row">
+            <input id="ulib-sgdb-key" class="db-input ulib-key" type="text" placeholder="SteamGridDB API Key（可选，免费）">
+            <button class="src-btn" id="ulib-sgdb-save" type="button">保存 Key</button>
+            <span id="ulib-sgdb-state" class="hint"></span>
+          </div>
+          <div class="hint">没有 Key？到 <a href="https://www.steamgriddb.com/user/preferences/api" target="_blank" rel="noreferrer">steamgriddb.com/user/preferences/api</a> 免费注册生成，粘贴到上面保存即可；不填也能用（Steam 查不到的模拟器游戏保持占位色块）。</div>
+          <div id="ulib-msg" class="hint"></div>
+        </div>
+
+        <div class="panel" id="imp-appearance">
           <h3>外观设置</h3>
           <div class="muted">页面背景：选一个内置底色，或导入你喜欢的图片（图片保存在本机 assets/background/，不会上传）。</div>
           <div id="bg-swatches" class="bg-swatches"><!-- 内置底色由脚本注入 --></div>
@@ -268,7 +333,7 @@
           <div id="bg-msg" class="hint">提示：选浅一点的图片效果最好，导入后自动加一层白纱保证文字清晰。</div>
         </div>
 
-        <div class="panel" id="assets-sync-panel">
+        <div class="panel" id="imp-assets">
           <h3>图片补齐（为线上版做准备）</h3>
           <div id="assets-sync-status" class="muted">检测中…</div>
           <div class="ra-actions">
@@ -302,6 +367,10 @@
   <!-- 手机（屏幕账本）：手动导入 json/zip 后由本地程序生成，每次整份替换 -->
   <script src="data_phone.js"></script>
   <script src="data_xbox_ach.js"></script>
+  <!-- 模拟器（RetroArch / PCSX2 / Dolphin 本地计数器）与 PC（Playnite 本地库）：
+       点导入页「重建」按钮后由本地程序生成；文件不存在时服务器返回空桩，页面正常显示引导 -->
+  <script src="data_emu.js"></script>
+  <script src="data_pc.js"></script>
   <!-- platform_fields.js = 各平台特有字段登记表（新增平台时填这里） -->
   <script src="platform_fields.js"></script>
   <script src="app.js"></script>
@@ -319,7 +388,7 @@
           '<button class="src-btn" id="btn-renorm">重新整理本地数据（不联网·秒级）</button>' +
           '<button class="src-btn" id="btn-ping">网络诊断</button>' +
           '<button class="src-btn" id="btn-edit">修改 Key / 账号</button>' +
-          '<div class="hint">拉取后，点左下角「我的 Steam」即可查看。拉取失败时先点「网络诊断」。<br>' +
+          '<div class="hint">拉取后，到「游戏库」页顶部页签点「Steam」即可查看。拉取失败时先点「网络诊断」。<br>' +
           '<b>两个按钮的区别</b>：「重新拉取」= 联网向 Steam 重新要一次（慢，几分钟）；' +
           '「重新整理」= 只用本机已存的数据重算（<b>不联网</b>，几秒），适合改了显示规则之后刷新。</div>' +
           '<div id="steam-result" class="result"></div>';
@@ -1255,6 +1324,20 @@
     </div>
   </div>
 
+  <!-- 编辑游戏资料（游戏数据库 → 详情 → 编辑资料；弹窗形式） -->
+  <div class="modal-mask" id="db-edit-mask" style="display:none">
+    <div class="modal db-modal db-edit-modal">
+      <span class="modal-close" id="db-edit-close">&times;</span>
+      <h3 style="margin:0 0 6px">编辑游戏资料</h3>
+      <div class="db-add-hint">改动过的字段会自动锁定，以后拉取数据 / 元数据补全都不会覆盖；没改的字段保持原样。</div>
+      <div id="db-edit-body"></div>
+      <div class="db-edit-foot">
+        <button class="src-btn" id="db-edit-save">保存</button>
+        <span id="db-edit-hint" class="db-add-hint" style="margin:0"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ 手机（屏幕账本）：两个入口，手动导入 ============
        没有联网接口，只能用户手动把手机导出的文件传上来：
          ① .json 使用数据  ② .zip 图标包
@@ -1410,6 +1493,371 @@
     }).catch(function () { /* 本地程序没运行就静默 */ });
 
     loadStatus();
+  })();
+  </script>
+
+  <!-- ============ Playnite / 模拟器：重建两个页签 + 管理列表 ============
+       ① 双击 tools/export_playnite.bat 导出库 → ② 点按钮重建 → ③ 管理列表手改归属。
+       手改存 data/playnite/overrides.json（重新构建不覆盖），改完自动重建。 -->
+  <script>
+  (function () {
+    var stEl = document.getElementById('pn-status');
+    var msgEl = document.getElementById('pn-msg');
+    var buildName = document.getElementById('pn-build-name');
+    if (!stEl) return;
+
+    function say(html, cls) { msgEl.className = 'hint' + (cls ? ' ' + cls : ''); msgEl.innerHTML = html || ''; }
+    function fmtMin(m) {
+      m = Math.round(m || 0);
+      if (m <= 0) return '—';
+      return m >= 60 ? (Math.round(m / 6) / 10 + 'h') : (m + 'm');
+    }
+    function fmtWhen(iso) { return iso ? String(iso).slice(0, 19).replace('T', ' ') : ''; }
+
+    /** 重建后重载 data_emu.js / data_pc.js（带时间戳绕缓存），让页面立即用新数据 */
+    function reloadSource(src) {
+      var file = src === 'emu' ? 'data_emu.js' : 'data_pc.js';
+      return new Promise(function (resolve) {
+        var s = document.createElement('script');
+        s.src = file + '?t=' + Date.now();
+        s.onload = function () {
+          try { window.GH_AFTER_SOURCE_RELOAD(src); } catch (e) {}
+          var btn = document.getElementById('src-' + src + '-btn');
+          if (btn) { btn.disabled = false; btn.title = ''; }
+          resolve();
+        };
+        s.onerror = function () { resolve(); };
+        document.body.appendChild(s);
+      });
+    }
+
+    function renderStatus(s) {
+      if (!s || !s.ok) { stEl.textContent = '状态读取失败（本地程序在运行吗？）'; return; }
+      var bits = [];
+      if (!s.libraryExists) bits.push('还没导出 Playnite 库（先双击 tools\\export_playnite.bat）');
+      else bits.push('Playnite 库已导出');
+      if (s.emu && s.emu.exists) bits.push('模拟器 <b>' + s.emu.count + '</b> 款（' + fmtWhen(s.emu.generatedAt) + '）');
+      else bits.push('模拟器页签未生成');
+      if (s.pc && s.pc.exists) bits.push('PC <b>' + s.pc.count + '</b> 款（' + fmtWhen(s.pc.generatedAt) + '）');
+      else bits.push('PC 页签未生成');
+      bits.push('手改 ' + (s.overridesCount || 0) + ' 条');
+      stEl.className = 'muted';
+      stEl.innerHTML = bits.join('　·　');
+      document.getElementById('pn-th-emu').value = s.config.emuThresholdMinutes;
+      document.getElementById('pn-th-pc').value = s.config.pcThresholdMinutes;
+      document.getElementById('pn-ach-folder').value = s.config.achFolder || '';
+    }
+
+    function loadStatus() {
+      return fetch('/api/playnite/status').then(function (r) { return r.json(); })
+        .then(renderStatus)
+        .catch(function () { stEl.textContent = '状态读取失败（本地程序在运行吗？）'; });
+    }
+
+    /** 重建一个页签：POST build → 重载数据 → 刷状态 */
+    function build(kind) {
+      var label = kind === 'emu' ? '模拟器' : 'PC';
+      say('正在重建' + label + '页签…（全在本机算，几秒）');
+      buildName.textContent = '重建中…';
+      fetch('/api/' + kind + '/build', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j || !j.ok) throw new Error((j && j.error) || '重建失败');
+          var lines = (j.games || []).map(function (g) {
+            return '<li>' + g.title + ' · ' + fmtMin(g.minutes) +
+              (g.source ? ' · ' + g.source : '') + (g.sourceGroup ? ' · ' + g.sourceGroup : '') + '</li>';
+          }).join('');
+          say('✓ ' + label + '页签已重建：<b>' + (j.games || []).length + '</b> 款（门槛 ' + j.thresholdUsed + ' 分钟）' +
+            (j.diffWarn ? '，另有 ' + j.diffWarn + ' 款本地与 RA 时长差异大（见管理列表）' : '') +
+            ((j.games || []).length ? '<ul class="rl">' + lines + '</ul>' : ''));
+          return reloadSource(kind);
+        })
+        .then(loadStatus)
+        .catch(function (e) { say('✗ ' + e.message, 'bad'); })
+        .then(function () { buildName.textContent = ''; });
+    }
+
+    document.getElementById('pn-build-emu').onclick = function () { build('emu'); };
+    document.getElementById('pn-build-pc').onclick = function () { build('pc'); };
+
+    document.getElementById('pn-th-save').onclick = function () {
+      var btn = this;
+      btn.disabled = true;
+      say('正在保存设置并重建两个页签…');
+      fetch('/api/playnite/config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emuThresholdMinutes: Number(document.getElementById('pn-th-emu').value) || 0,
+          pcThresholdMinutes: Number(document.getElementById('pn-th-pc').value) || 0,
+          achFolder: String(document.getElementById('pn-ach-folder').value || '').trim(),
+        }),
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || '保存失败');
+        var achTxt = '';
+        if (j.achStats && j.achStats.folder) {
+          achTxt = j.achStats.matched > 0
+            ? '，成就墙命中 <b>' + j.achStats.matched + '</b> 款'
+            : '，成就墙里没匹配到这几款 PC 游戏（按 Steam appid 精确匹配；没有的可在管理列表手钉 appId）';
+        }
+        say('✓ 已保存（模拟器 ' + j.config.emuThresholdMinutes + ' 分钟 / PC ' + j.config.pcThresholdMinutes +
+          ' 分钟' + achTxt + '），重建完成：模拟器 ' + j.emuCount + ' 款、PC ' + j.pcCount + ' 款。', 'ok');
+        return Promise.all([reloadSource('emu'), reloadSource('pc')]);
+      }).then(loadStatus).catch(function (e) { say('✗ ' + e.message, 'bad'); })
+        .then(function () { btn.disabled = false; });
+    };
+
+    /* ---------- 「浏览…」：弹 Windows 原生选文件夹窗口（本地程序能力，2026-10-25） ---------- */
+    var browseBtn = document.getElementById('pn-ach-browse');
+    (function () {
+      fetch('/api/pick-folder/available').then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok) browseBtn.style.display = '';
+      }).catch(function () { /* 弹不了就留在手输模式 */ });
+    })();
+    browseBtn.onclick = function () {
+      var btn = this;
+      btn.disabled = true;
+      say('请在弹出的窗口里选择文件夹…（选完自动填入）');
+      fetch('/api/pick-folder', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j || !j.ok) throw new Error((j && j.error) || '打开选择窗口失败');
+          if (j.canceled) { say('已取消选择。'); return null; }
+          document.getElementById('pn-ach-folder').value = j.path;
+          say('✓ 已选择：<b>' + j.path + '</b>（记得点「保存设置并重建」）', 'ok');
+          return null;
+        })
+        .catch(function (e) { say('✗ ' + e.message + '（也可以直接在输入框里手输路径）', 'bad'); })
+        .then(function () { btn.disabled = false; });
+    };
+
+    /* ---------- 管理列表 ---------- */
+    var manageEl = document.getElementById('pn-manage');
+    var manageWrap = document.getElementById('pn-manage-wrap');
+    var manageLoaded = false;
+
+    function ovMark(row) {
+      return row.override ? ' <span class="pn-ov" title="已手改：' + Object.keys(row.override).join('、') + '">✋</span>' : '';
+    }
+
+    function saveRow(name, patch, rowEl) {
+      fetch('/api/playnite/override', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, patch: patch }),
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || '保存失败');
+        say('已保存「' + name + '」的手改，正在后台重建两个页签…', 'ok');
+        return Promise.all([
+          fetch('/api/emu/build', { method: 'POST' }),
+          fetch('/api/pc/build', { method: 'POST' }),
+        ]).then(function () { return Promise.all([reloadSource('emu'), reloadSource('pc')]); })
+          .then(loadStatus)
+          .then(function () { say('✓ 手改已生效（「' + name + '」）。', 'ok'); });
+      }).catch(function (e) { say('✗ 保存失败：' + e.message, 'bad'); });
+    }
+
+    function renderManage(j) {
+      var html = '';
+      if ((j.diffWarn || []).length) {
+        html += '<div class="pn-warn"><div class="pn-warn-title">⚠ 本地模拟器时长与 RA 差异大（RA 页签为准，仅供参考，不用处理）</div>';
+        j.diffWarn.forEach(function (d) {
+          html += '<div class="pn-warn-row"><span class="pn-name">' + d.title + '</span>' +
+            '<span class="pn-min">RA ' + fmtMin(d.raMinutes) + ' · 本地 ' + fmtMin(d.localMinutes) + '</span></div>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="pn-head"><span></span><span>时长</span><span>归属</span><span>捞回</span><span>备注</span></div>';
+      (j.rows || []).forEach(function (row) {
+        var cur = row.override && row.override.platform ? row.override.platform : 'auto';
+        html += '<div class="pn-row" data-name="' + row.name.replace(/"/g, '&quot;') + '">' +
+          '<span class="pn-name" title="' + row.name + '">' + row.name + ovMark(row) + '</span>' +
+          '<span class="pn-min">' + fmtMin(row.minutes) + (row.playCount ? ' · ' + row.playCount + '次' : '') + '</span>' +
+          '<select class="pn-sel" title="归属（自动 = ' + row.autoLabel + '）">' +
+            '<option value="auto"' + (cur === 'auto' ? ' selected' : '') + '>自动（' + row.autoLabel + '）</option>' +
+            ['pc', 'emu', 'steam', 'xbox', 'epic', 'hidden'].map(function (v) {
+              var names = { pc: 'PC', emu: '模拟器', steam: 'Steam', xbox: 'Xbox', epic: 'Epic', hidden: '隐藏' };
+              return '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + names[v] + '</option>';
+            }).join('') +
+          '</select>' +
+          '<label class="pn-inc" title="强行捞回被门槛滤掉的游戏"><input type="checkbox" class="pn-inc-cb"' +
+            (row.override && row.override.include ? ' checked' : '') + '>捞回</label>' +
+          '<input class="pn-note" type="text" placeholder="备注" value="' +
+            (row.override && row.override.note ? String(row.override.note).replace(/"/g, '&quot;') : '') + '">' +
+          '</div>';
+      });
+      manageEl.innerHTML = html;
+
+      [].forEach.call(manageEl.querySelectorAll('.pn-row'), function (rowEl) {
+        var name = rowEl.getAttribute('data-name');
+        var sel = rowEl.querySelector('.pn-sel');
+        var cb = rowEl.querySelector('.pn-inc-cb');
+        var note = rowEl.querySelector('.pn-note');
+        sel.addEventListener('change', function () {
+          saveRow(name, { platform: sel.value === 'auto' ? null : sel.value }, rowEl);
+        });
+        cb.addEventListener('change', function () {
+          saveRow(name, { include: cb.checked ? true : null }, rowEl);
+        });
+        note.addEventListener('change', function () {
+          saveRow(name, { note: note.value.trim() || null }, rowEl);
+        });
+      });
+    }
+
+    function loadManage() {
+      manageEl.innerHTML = '<div class="hint">正在读取 Playnite 全库…</div>';
+      fetch('/api/playnite/list').then(function (r) { return r.json(); })
+        .then(function (j) { if (!j || !j.ok) throw new Error((j && j.error) || '读取失败'); renderManage(j); })
+        .catch(function (e) { manageEl.innerHTML = '<div class="hint">读取失败：' + e.message + '</div>'; });
+    }
+    manageWrap.addEventListener('toggle', function () {
+      if (manageWrap.open) { loadManage(); manageLoaded = true; }
+    });
+
+    loadStatus();
+  })();
+  </script>
+
+  <!-- ============ 统一库：本地汇总 + 联网补缺（Steam / SteamGridDB） ============
+       汇总零联网；补全按需联网、限速 1s/请求、进度落盘断点续跑。
+       轮询三闸门：确认在跑才启动 / 终态立刻 clearInterval / 硬上限 1800 次。 -->
+  <script>
+  (function () {
+    var stEl = document.getElementById('ulib-status');
+    var msgEl = document.getElementById('ulib-msg');
+    var progEl = document.getElementById('ulib-progress');
+    var enrichBtn = document.getElementById('ulib-enrich');
+    if (!stEl) return;
+
+    function say(html, cls) { msgEl.className = 'hint' + (cls ? ' ' + cls : ''); msgEl.innerHTML = html || ''; }
+
+    function renderStatus(s) {
+      if (!s || !s.ok) { stEl.textContent = '状态读取失败（本地程序在运行吗？）'; return; }
+      stEl.className = 'muted';
+      stEl.innerHTML = '库内 <b>' + s.count + '</b> 款（更新于 ' + String(s.updatedAt || '—').slice(0, 19).replace('T', ' ') +
+        '）· 带 Steam ID ' + s.withSteam + ' 款 · PC ' + s.withPc + ' 款 · 模拟器 ' + s.withGamedb + ' 款 · 有封面 ' + s.withCover + ' 款';
+      renderSgdb(s.sgdb);
+    }
+
+    function renderSgdb(sgdb) {
+      var el = document.getElementById('ulib-sgdb-state');
+      if (el && sgdb) el.textContent = sgdb.configured ? '已保存 Key ✓' : '未配置（可选）';
+      var key = document.getElementById('ulib-sgdb-key');
+      if (key && sgdb && sgdb.configured) key.placeholder = 'Key 已保存（粘贴新值可替换）';
+    }
+
+    function loadStatus() {
+      return fetch('/api/library/build').then(function (r) { return r.json(); })
+        .then(renderStatus)
+        .catch(function () { stEl.textContent = '状态读取失败（本地程序在运行吗？）'; });
+    }
+
+    function loadSgdb() {
+      fetch('/api/library/sgdb').then(function (r) { return r.json(); }).then(renderSgdb).catch(function () {});
+    }
+
+    document.getElementById('ulib-build').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      say('正在汇总本地资料…（全在本机算，几秒）');
+      fetch('/api/library/build', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j || !j.ok) throw new Error((j && j.error) || '汇总失败');
+          say('✓ 汇总完成：库内 <b>' + j.total + '</b> 款（新增 ' + j.added + '、合并 ' + j.merged + '）。', 'ok');
+          return loadStatus();
+        })
+        .catch(function (e) { say('✗ ' + e.message, 'bad'); })
+        .then(function () { btn.disabled = false; });
+    });
+
+    document.getElementById('ulib-sgdb-save').addEventListener('click', function () {
+      var key = String(document.getElementById('ulib-sgdb-key').value || '').trim();
+      if (!key) { say('先把 Key 粘贴到输入框。'); return; }
+      fetch('/api/library/sgdb', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key }),
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || '保存失败');
+        document.getElementById('ulib-sgdb-key').value = '';
+        renderSgdb(j);
+        say('✓ Key 已保存（只存在本机 config/steamgriddb.json，不会进代码）。', 'ok');
+      }).catch(function (e) { say('✗ ' + e.message, 'bad'); });
+    });
+
+    /* ---- 联网补全：进度轮询（三闸门） ---- */
+    var timer = null, polls = 0;
+
+    function stopPoll() { if (timer) { clearInterval(timer); timer = null; } }
+
+    function pollOnce() {
+      polls++;
+      if (polls > 1800) stopPoll();   // 硬上限，防自激轮询
+      return fetch('/api/library/enrich').then(function (r) { return r.json(); }).then(function (s) {
+        if (!s || !s.ok) { stopPoll(); return s; }
+        var pct = s.total ? Math.round(s.done / s.total * 100) : 0;
+        progEl.textContent = s.running
+          ? '补全中 ' + pct + '%（' + s.done + '/' + s.total + '）· 成功 ' + s.okCount + ' · 跳过 ' + s.skipCount + ' · 失败 ' + s.failCount
+          : '';
+        if (!s.running) {
+          stopPoll();
+          enrichBtn.disabled = false;
+          var bits = ['✓ 补全结束：成功 ' + s.okCount + ' · 跳过 ' + s.skipCount + ' · 失败 ' + s.failCount];
+          (s.recent || []).forEach(function (r) {
+            var mark = r.outcome === 'ok' ? '✓' : r.outcome === 'skip' ? '–' : '✗';
+            bits.push(mark + ' ' + r.title + (r.note ? '（' + r.note + '）' : ''));
+          });
+          say(bits.join('<br>'), s.failCount ? '' : 'ok');
+          loadStatus();
+          // 重建完成后两个页签的数据可能带了新封面 → 重载让页面立即生效
+          reloadTabData('pc'); reloadTabData('emu');
+        }
+        return s;
+      }).catch(function () { /* 服务端没起就不刷了 */ });
+    }
+
+    function reloadTabData(src) {
+      var file = src === 'emu' ? 'data_emu.js' : 'data_pc.js';
+      var s = document.createElement('script');
+      s.src = file + '?t=' + Date.now();
+      s.onload = function () { try { window.GH_AFTER_SOURCE_RELOAD(src); } catch (e) {} };
+      document.body.appendChild(s);
+    }
+
+    enrichBtn.addEventListener('click', function () {
+      enrichBtn.disabled = true;
+      say('正在联网补全（Steam → SteamGridDB，限速进行，可随时离开页面）…');
+      fetch('/api/library/enrich', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j || !j.ok) {
+            enrichBtn.disabled = false;
+            if (j && j.reason === '已在运行中') { say('补全已在进行中，下方显示实时进度。'); startPoll(); }
+            else throw new Error((j && (j.reason || j.error)) || '启动失败');
+            return null;
+          }
+          say('已启动：本次待补 ' + j.total + ' 款' + (j.resumed ? '（从上次断点继续）' : '') + '。');
+          startPoll();
+          return null;
+        })
+        .catch(function (e) { enrichBtn.disabled = false; say('✗ ' + e.message, 'bad'); });
+    });
+
+    function startPoll() {
+      if (timer) return;            // 闸门1：已在跑就不重复启动
+      polls = 0;
+      pollOnce();
+      timer = setInterval(pollOnce, 2000);
+    }
+
+    loadStatus();
+    loadSgdb();
+    // 页面打开时若上次有未完成的进度，先显示出来（不自动开跑，enrich 只手动点）
+    fetch('/api/library/enrich').then(function (r) { return r.json(); }).then(function (s) {
+      if (s && s.ok && s.running) { enrichBtn.disabled = true; startPoll(); }
+      else if (s && s.ok && s.total > 0 && (s.okCount || s.skipCount || s.failCount)) {
+        progEl.textContent = '上次补全：成功 ' + s.okCount + ' · 跳过 ' + s.skipCount + ' · 失败 ' + s.failCount;
+      }
+    }).catch(function () {});
   })();
   </script>
 </body>

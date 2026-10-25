@@ -80,6 +80,22 @@ window.PLATFORM_FIELDS = {
     // { key: 'playSessions',   label: '游玩场次', type: 'number' },
   ],
 
+  /* ---------- PC（Playnite 本地库，2026-10-22 接入）----------
+   * Steam / Xbox / Epic 的官方条目不在这里（各自页签已有），只有 Playnite 归到 PC 的本地游戏。 */
+  pc: [
+    { key: 'playCount',   label: '启动次数', type: 'number' },
+    { key: 'sourceGroup', label: '分组',     type: 'text' },   // 本地/PC · 未标注 · 已通关
+    { key: 'installDir',  label: '安装目录', type: 'text' },
+  ],
+
+  /* ---------- 模拟器（RetroArch / PCSX2 / Dolphin 本地计数器，2026-10-22 接入）----------
+   * 拆成 emu-wii / emu-arc … 多个平台（与 RA 同构），共用这一张字段表。 */
+  emulator: [
+    { key: 'sourceZh',  label: '计数器',   type: 'text' },   // RetroArch · PCSX2 · Dolphin
+    { key: 'gamedbId',  label: '资料库ID', type: 'text' },
+    { key: 'diffWarn',  label: '与RA有差异', type: 'bool' },
+  ],
+
   /* ---------- RetroAchievements：模拟器 / 老游戏成就 ----------
    * 注意：RA 的游戏是按主机拆成 ra-nes / ra-gba / ra-ds … 多个平台的（用户 2026-10-19 定），
    * 这张表用 retroachievements 这一个键当「RA 全家共用」的字段表，

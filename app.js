@@ -26,10 +26,14 @@
     // 手机：屏幕账本 App 导出的使用数据（手动导入，没有联网接口）。2026-10-20 用「手机」替掉了 PSN 占位。
     phone:  { varName: 'GAME_DATA_PHONE',  label: '我的手机',   short: '手机',    platform: 'phone' },
     epic:   { varName: 'GAME_DATA_EPIC',   label: '我的 Epic',   short: 'Epic',   platform: 'epic' },
-    retro:  { varName: 'GAME_DATA_RETRO',  label: 'Retro 成就',   short: 'Retro',  platform: 'retroachievements' }
+    retro:  { varName: 'GAME_DATA_RETRO',  label: 'Retro 成就',   short: 'Retro',  platform: 'retroachievements' },
+    // PC（Playnite 本地库）与模拟器（RetroArch / PCSX2 / Dolphin 本地计数器）：
+    // 由导入页「重建」按钮生成本地数据，与官方平台互不重叠（归属判定时已排除）
+    pc:     { varName: 'GAME_DATA_PC',    label: '我的 PC',     short: 'PC',     platform: 'pc' },
+    emu:    { varName: 'GAME_DATA_EMU',   label: '我的模拟器',  short: '模拟器',  platform: 'emu' }
   };
   /** 顶部游戏库页签里显示的顺序（用户 2026-10-20 定：Nintendo / Xbox / Steam / Retro / Epic / 手机） */
-  var SOURCE_ORDER = ['nintendo', 'xbox', 'steam', 'retro', 'epic', 'phone'];
+  var SOURCE_ORDER = ['nintendo', 'xbox', 'steam', 'retro', 'epic', 'phone', 'pc', 'emu'];
 
   function emptyData() { return { schemaVersion: 1, platforms: [], ownerId: null, games: [] }; }
 
@@ -504,10 +508,28 @@
         '<div class="ach-bar-row"><div class="ach-bar na" title="手机只记录使用时长，没有成就系统"></div></div>' +
         '<div class="ach-icons"></div></div>';
     } else if (!gameHasAchievements(game)) {
+      // PC / 模拟器没有成就数据：那一栏改显示更有意义的数字（PC=启动次数，模拟器=来源）
+      // 任天堂仍然显示游玩天数（游戏日历是它的主战场）
+      var p0 = (game.platforms[0] || {});
+      var pex0 = p0.extra || {};
+      var topSpan, tagTxt, tipTxt;
+      if (p0.platform === 'pc') {
+        topSpan = '启动 <b>' + (pex0.playCount || 0) + '</b> 次';
+        tagTxt = pex0.sourceGroup || 'PC';
+        tipTxt = 'Playnite 记录的分组';
+      } else if (isEmuPlatform(p0.platform)) {
+        topSpan = '来源 <b>' + esc(pex0.sourceZh || '模拟器') + '</b>';
+        tagTxt = '模拟器计数';
+        tipTxt = '来自本地模拟器计数器，没有成就数据';
+      } else {
+        topSpan = '游玩 <b>' + gamePlayDays(game) + '</b> 天';
+        tagTxt = '本平台无成就';
+        tipTxt = '任天堂全平台都没有成就系统';
+      }
       achBlock = '<div class="ach-block no-ach">' +
-        '<div class="ach-top"><span>游玩 <b>' + gamePlayDays(game) + '</b> 天</span>' +
-        '<span class="na-tag">本平台无成就</span></div>' +
-        '<div class="ach-bar-row"><div class="ach-bar na" title="任天堂全平台都没有成就系统"></div></div>' +
+        '<div class="ach-top"><span>' + topSpan + '</span>' +
+        '<span class="na-tag">' + esc(tagTxt) + '</span></div>' +
+        '<div class="ach-bar-row"><div class="ach-bar na" title="' + tipTxt + '"></div></div>' +
         '<div class="ach-icons"></div></div>';
     } else {
       achBlock = '<div class="ach-block">' +
@@ -611,6 +633,9 @@
 
   /** 平台 id 是否属于 RA（ra-nes / ra-gba / …） */
   function isRaPlatform(id) { return String(id || '').indexOf('ra-') === 0; }
+
+  /** 平台 id 是否属于模拟器页签（emu-wii / emu-arc / …，与 RA 多主机同构） */
+  function isEmuPlatform(id) { return String(id || '').indexOf('emu-') === 0; }
 
   /** 游戏是否属于某个页签（页签可能是「一台主机」，也可能是「一整个多主机数据源」） */
   function matchesPlatform(game, pid) {
@@ -1285,28 +1310,34 @@
     psn:    { hasAchievements: true,  achStyle: 'compact' },  // 奖杯（未来接入）
     epic:   { hasAchievements: false, achStyle: 'none' },     // Epic 成就接口已关闭，平台层面没有成就 → 不渲染成就区
     phone:  { hasAchievements: false, achStyle: 'none' },     // 手机（屏幕账本）只记使用时长，没有成就
+    pc:     { hasAchievements: true,  achStyle: 'compact' },  // PC（Playnite 本地库）只有拿到本地成就数据（AchievementWall）才显示成就——gameHasAchievements 里对 pc 有特判
+    emulator: { hasAchievements: false, achStyle: 'none' },   // 模拟器（本地计数器）没有成就数据
     switch: { hasAchievements: false, achStyle: 'none' },     // 任天堂没有成就系统（旧占位，保留）
     retroachievements: { hasAchievements: true, achStyle: 'compact' }
   };
 
-  /** 任天堂三台主机（nintendo-switch / nintendo-switch2 / nintendo-3ds）
-   *  任天堂从没做过成就系统——不是没拉到，是压根没有，所以成就区永远不渲染。 */
-  var NINTENDO_PLATFORM_IDS = ['nintendo-switch', 'nintendo-switch2', 'nintendo-3ds'];
+  /** 任天堂主机（nintendo-switch / nintendo-switch2 / nintendo-3ds / nintendo-ds）
+   *  任天堂从没做过成就系统——不是没拉到，是压根没有，所以成就区永远不渲染。
+   *  nintendo-ds 是 3DS 实机上的 DS 卡带（2026-10-23，时长为估算值）。 */
+  var NINTENDO_PLATFORM_IDS = ['nintendo-switch', 'nintendo-switch2', 'nintendo-3ds', 'nintendo-ds'];
   function isNintendoPlatform(id) { return NINTENDO_PLATFORM_IDS.indexOf(id) >= 0; }
 
   function platformDetail(platform) {
     if (isNintendoPlatform(platform)) return { hasAchievements: false, achStyle: 'none' };
+    if (isEmuPlatform(platform)) return PLATFORM_DETAIL.emulator;   // emu-* 主机共用模拟器一张表
     return PLATFORM_DETAIL[platform] || { hasAchievements: true, achStyle: 'compact' };
   }
 
   /** 取某平台的「特有字段」登记表；
    *  RA 拆出来的 ra-* 主机共用 retroachievements 一张表，
-   *  任天堂三台主机共用 nintendo 一张表。 */
+   *  任天堂三台主机共用 nintendo 一张表，
+   *  模拟器拆出来的 emu-* 主机共用 emulator 一张表。 */
   function platformFieldDefs(pid) {
     var F = window.PLATFORM_FIELDS || {};
     if (F[pid]) return F[pid];
     if (isRaPlatform(pid)) return F.retroachievements || [];
     if (isNintendoPlatform(pid)) return F.nintendo || [];
+    if (isEmuPlatform(pid)) return F.emulator || [];
     if (pid.indexOf('phone:') === 0) return F.phone || [];
     return [];
   }
@@ -1314,6 +1345,8 @@
   /** 这款游戏的详情页要不要显示成就区（任一所属平台有成就系统就算有） */
   function gameHasAchievements(game) {
     return (game.platforms || []).some(function (p) {
+      // PC 特判（2026-10-25）：只有真拿到本地成就数据才显示成就区，没数据的老 PC 游戏照旧不渲染
+      if (p.platform === 'pc') return (p.achievements.items || []).length > 0;
       return platformDetail(p.platform).hasAchievements;
     });
   }
@@ -1338,7 +1371,8 @@
 
   /** 紧凑列表式成就条目（Steam / PSN / 模拟器 等，图标小、一行一条） */
   function compactAchHtml(it) {
-    var on = !!it.unlockedAt;
+    // unlockedAt 为空但 unlocked=true（本地成就墙只有计数没时间）也算已解锁
+    var on = !!it.unlockedAt || it.unlocked === true;
     // 远程图标：本地版先不加载（走后端按需下载→本地）；线上版直接显示（CDN 地址可靠）
     var badgeInner = !it.iconUrl ? '★'
       : (/^https?:/.test(it.iconUrl)
@@ -1348,7 +1382,7 @@
           : '<img src="' + esc(it.iconUrl) + '" alt="" onerror="this.remove()">');
     // RA 成就带点数（0 点的是「进度型」成就），有的平台没有这项，就自动不显示
     var pts = (it.points !== null && it.points !== undefined && it.points !== '') ? (' · ' + it.points + ' 点') : '';
-    var extra = pts + (on ? ' · 解锁于 ' + datePart(it.unlockedAt) : ' · 未解锁');
+    var extra = pts + (on ? (it.unlockedAt ? ' · 解锁于 ' + datePart(it.unlockedAt) : ' · 已解锁（时间未记录）') : ' · 未解锁');
     return '<div class="ach-item ' + (on ? 'on' : 'off') + '">' +
       '<div class="badge">' + badgeInner + (on ? '<i class="tick">✓</i>' : '') + '</div>' +
       '<div><div class="a-name">' + esc(it.name) + '</div>' +
@@ -1396,8 +1430,8 @@
       cells += cell('时长', formatMinutes(p.totalMinutes));
       if (p.lastPlayedAt) cells += cell('最后游玩', datePart(p.lastPlayedAt));
       if (p.firstPlayedAt) cells += cell('首次游玩', datePart(p.firstPlayedAt));
-      // 成就一行：该平台没有成就系统（如 Switch）就不显示
-      if (platformDetail(p.platform).hasAchievements) {
+      // 成就一行：该平台没有成就系统（如 Switch）就不显示；PC 只有真有成就数据才显示
+      if (platformDetail(p.platform).hasAchievements && (p.platform !== 'pc' || (p.achievements.items || []).length > 0)) {
         cells += cell('成就', achCountText(p.achievements.unlocked, p.achievements.total));
       }
       if (p.launchSessions && p.launchSessions.length) cells += cell('启动次数', p.launchSessions.length);
@@ -1487,8 +1521,24 @@
         '</div>' +
         '<div class="section-title">基本信息</div>' +
         '<div class="meta-grid">' + metaHtml + '</div>' +
-        (game.description ? '<div class="a-desc" style="margin:10px 2px 0">' + esc(game.description) + '</div>' : '') +
+        (function () {
+          // 简介优先长文 description，enrich/各平台补的通常是 shortDescription（PC/模拟器详情页 2026-10-22 修复）
+          var desc = game.description || game.shortDescription;
+          return desc ? '<div class="a-desc" style="margin:10px 2px 0">' + esc(desc) + '</div>' : '';
+        })() +
         phoneToggleHtml(game) +
+        (function () {
+          // 实机存档实拍（DS 卡带特例，2026-10-24）：数据自带 extra.proofImages 才显示
+          var imgs = [];
+          (game.platforms || []).forEach(function (p) {
+            if (p.extra && Array.isArray(p.extra.proofImages)) imgs = imgs.concat(p.extra.proofImages);
+          });
+          if (!imgs.length) return '';
+          return '<div class="section-title">实机存档实拍</div>' +
+            '<div class="proof-grid">' + imgs.map(function (src) {
+              return '<img class="proof-img" src="' + esc(src) + '" loading="lazy" alt="实机存档实拍（点开看大图）">';
+            }).join('') + '</div>';
+        })() +
         '<div class="section-title">' + esc(gameSourceLabel(game) || '平台') + ' 原始数据（按该平台自己的字段展示）</div>' +
         pcards +
         (showAch ? '<div class="section-title">成就列表（' + achCountText(a.achUnlocked, a.achTotal) + '）</div>' + achBlockHtml : '') +
@@ -1515,6 +1565,10 @@
     lazyLoadXboxAchievements(mask, game);
     lazyLoadRaDetail(mask, game);
     bindAchLightbox(mask);
+    // 实机存档实拍：点开大图（复用成就灯箱）
+    [].forEach.call(mask.querySelectorAll('.proof-img'), function (img) {
+      img.addEventListener('click', function () { openLightbox(img.src, '实机存档实拍'); });
+    });
   }
 
   /**
@@ -1733,6 +1787,7 @@
     if (careerTlFilter === 'all') return true;
     if (careerTlFilter === 'nintendo') return isNintendoPlatform(p.platform);
     if (careerTlFilter === 'retro') return isRaPlatform(p.platform);
+    if (careerTlFilter === 'emu') return isEmuPlatform(p.platform);
     return p.platform === careerTlFilter;
   }
 
@@ -2240,6 +2295,7 @@
     if (rpFilter === 'all') return true;
     if (rpFilter === 'nintendo') return isNintendoPlatform(p.platform);
     if (rpFilter === 'retro') return isRaPlatform(p.platform);
+    if (rpFilter === 'emu') return isEmuPlatform(p.platform);
     return p.platform === rpFilter;
   }
 
@@ -2413,6 +2469,7 @@
     if (topFilter === 'all') return true;
     if (topFilter === 'nintendo') return isNintendoPlatform(p.platform);
     if (topFilter === 'retro') return isRaPlatform(p.platform);
+    if (topFilter === 'emu') return isEmuPlatform(p.platform);
     return p.platform === topFilter;
   }
 
@@ -2629,13 +2686,17 @@
       { id: 'all', name: '全部平台' },
       { id: 'steam', name: 'Steam' },
       { id: 'xbox', name: 'Xbox' },
+      { id: 'epic', name: 'Epic' },
       { id: 'nintendo', name: 'Nintendo（三台主机）' },
       { id: 'retro', name: 'Retro 老游戏' },
+      { id: 'pc', name: 'PC（Playnite）' },
+      { id: 'emu', name: '模拟器' },
     ].filter(function (g) {
       if (g.id === 'all') return true;
       return Object.keys(seen).some(function (pid) {
         if (g.id === 'nintendo') return isNintendoPlatform(pid);
         if (g.id === 'retro') return isRaPlatform(pid);
+        if (g.id === 'emu') return isEmuPlatform(pid);
         return pid === g.id;
       });
     });
@@ -2679,13 +2740,13 @@
 
     html += '<div class="kpi-row">' +
       kpiCard('今年玩过', j.playedTotal, ' 款', '最后游玩在今年 · 时长 ≥1 小时') +
-      kpiCard('今年新玩', j.newTotal, ' 款', '首次游玩 / 首个成就 / 新领') +
+      kpiCard('今年新玩', j.newTotal, ' 款', '玩过里面今年首次的 · 同样 ≥1 小时') +
       kpiCard('今年成就', j.achTotal, ' 个', '按解锁日期') +
       kpiCard('今年时长 · 任天堂', formatMinutes(j.nintendo.totalMinutes || 0), '', '按天记录 · ' + (j.nintendo.daysPlayed || 0) + ' 天') +
     '</div>';
 
     // 各平台今年玩过 · 柱状对比（用户 2026-10-21 加）
-    var colors = { Steam: '#1b9be8', Xbox: '#3ea743', Retro: '#c86428', '任天堂': '#d43d3d', Epic: '#6d6d6d' };
+    var colors = { Steam: '#1b9be8', Xbox: '#3ea743', Retro: '#c86428', '任天堂': '#d43d3d', Epic: '#6d6d6d', 'PC': '#7c5cff', '模拟器': '#2f9e77' };
     var playedRows = j.byPlatform.filter(function (p) { return p.played > 0; });
     if (playedRows.length) {
       var maxP = Math.max.apply(null, playedRows.map(function (p) { return p.played; }));
@@ -2722,8 +2783,8 @@
         '</div></div>';
     }
 
-    html += '<div class="year-note">口径：手机不参与；「玩过」= 最后游玩时间在今年且总时长 ≥1 小时（Epic 无游玩时间，只按新领统计）；' +
-      '「新玩」= 首次游玩 / 首个成就 / 新领落在今年；总时长仅任天堂有按天数据。</div>';
+    html += '<div class="year-note">口径：手机不参与；「玩过」= 最后游玩时间在今年且总时长 ≥1 小时（无时长数据的不剔除，Epic 没有游玩数据不参与）；' +
+      '「新玩」= 在「玩过」里面，首次游玩 / 首个成就 / 新领落在今年 —— 所以新玩一定不超过玩过。</div>';
 
     box.className = '';
     box.innerHTML = html;
@@ -2795,20 +2856,76 @@
 
   function dbHasPlatform(g, p) { return (g.platforms || []).some(function (x) { return x.platform === p; }); }
 
+  /* ---- 平台展示名：库内平台值 → 中文短名（NDS / 3DS / GBA / 街机…） ---- */
+  var DB_PLAT_NAME = {
+    steam: 'Steam', xbox: 'Xbox', epic: 'Epic Games', pc: 'PC',
+    'nintendo-switch': 'Switch', 'nintendo-switch2': 'Switch 2', 'nintendo-3ds': '3DS',
+    'nintendo-wiiu': 'Wii U', 'nintendo-ds': 'NDS',
+  };
+  var DB_PLAT_ZH = {
+    nes: 'FC/NES', fds: 'FC磁碟机', snes: 'SFC/SNES', sfc: 'SFC/SNES', gba: 'GBA', gb: 'GB',
+    gbc: 'GBC', ds: 'NDS', '3ds': '3DS', psp: 'PSP', ps1: 'PS1', ps2: 'PS2', wii: 'Wii',
+    gc: 'NGC', md: 'MD', sms: 'SMS', gg: 'GG', ngp: 'NGP', ngpc: 'NGPC', n64: 'N64',
+    dc: 'DC', saturn: '土星', pce: 'PCE', vb: 'Virtual Boy', ws: 'WonderSwan', wsc: 'WonderSwan Color',
+    lynx: 'Lynx', atari2600: 'Atari 2600', atari7800: 'Atari 7800', '32x': '32X',
+    sg1000: 'SG-1000', neogeocd: 'NeoGeo CD', segacd: 'Mega CD', pcecd: 'PCE-CD',
+    arcade: '街机', arc: '街机',
+  };
+  function dbPlatName(p) {
+    var id = String(p || '');
+    if (DB_PLAT_NAME[id]) return DB_PLAT_NAME[id];
+    var m = /^(?:ra|emu|gamedb)-(.+)$/.exec(id);
+    if (m && DB_PLAT_ZH[m[1]]) return DB_PLAT_ZH[m[1]];
+    if (m) return m[1].toUpperCase();
+    return getPlatform(id).name;
+  }
+
+  /** Epic 无名 offer 的库内条目：displayName 是一串十六进制 hash，对用户没有意义 */
+  var DB_HEX_RE = /^[0-9a-f]{16,}$/i;
+  function dbUnreadable(g) { return DB_HEX_RE.test(String(g.displayName || '')); }
+
+  /** 平台筛选下拉：按库内实际出现过的平台动态生成（含各主机），保留跨平台/待补全两项 */
+  function dbRenderFilterOptions(games) {
+    var el = document.getElementById('db-filter');
+    if (!el) return;
+    var count = {};
+    games.forEach(function (g) {
+      (g.platforms || []).forEach(function (p) { count[p.platform] = (count[p.platform] || 0) + 1; });
+    });
+    var PRIO = { steam: 0, xbox: 1, epic: 2, pc: 3, 'nintendo-switch': 4, 'nintendo-switch2': 5, 'nintendo-3ds': 6 };
+    var keys = Object.keys(count).sort(function (a, b) {
+      var pa = PRIO[a] !== undefined ? PRIO[a] : 100, pb = PRIO[b] !== undefined ? PRIO[b] : 100;
+      if (pa !== pb) return pa - pb;
+      return count[b] - count[a];
+    });
+    var html = '<option value="all">全部平台</option>';
+    keys.forEach(function (k) {
+      html += '<option value="' + esc(k) + '">' + esc(dbPlatName(k)) + '（' + count[k] + '）</option>';
+    });
+    html += '<option value="multi">跨平台（多平台同一款）</option>';
+    html += '<option value="nometadata">元数据待补全</option>';
+    var cur = dbFilter;
+    el.innerHTML = html;
+    if (cur && (cur === 'all' || count[cur] || cur === 'multi' || cur === 'nometadata')) el.value = cur;
+    else { dbFilter = 'all'; el.value = 'all'; }
+  }
+
   function renderDatabase() {
-    dbDetailId = null;   // 回到列表时清掉详情态
     var statsEl = document.getElementById('db-stats');
     var listEl = document.getElementById('db-list');
     listEl.innerHTML = '<div class="db-add-hint">正在读取游戏库…</div>';
     dbLoad().then(function (games) {
+      // Epic 无名 offer（displayName 是十六进制 hash）对浏览没意义：整列隐藏
+      var visible = games.filter(function (g) { return !dbUnreadable(g); });
+      var hiddenCount = games.length - visible.length;
+      dbRenderFilterOptions(visible);
       var q = String(document.getElementById('db-search').value || '').trim().toLowerCase();
-      var list = games.filter(function (g) {
+      var list = visible.filter(function (g) {
         if (!dbMatch(g, q)) return false;
-        if (dbFilter === 'steam') return dbHasPlatform(g, 'steam');
-        if (dbFilter === 'xbox') return dbHasPlatform(g, 'xbox');
+        if (dbFilter === 'all') return true;
         if (dbFilter === 'multi') return (g.platforms || []).length > 1;
         if (dbFilter === 'nometadata') return !g.releaseDate;
-        return true;
+        return dbHasPlatform(g, dbFilter);
       });
       if (dbSort === 'recent') {
         list.sort(function (a, b) { return String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')); });
@@ -2818,19 +2935,20 @@
         list.sort(function (a, b) { return String(a.displayName || '').localeCompare(String(b.displayName || ''), 'zh'); });
       }
 
-      var multi = games.filter(function (g) { return (g.platforms || []).length > 1; }).length;
-      var zh = games.filter(function (g) { return g.names && g.names.zh; }).length;
-      var noMeta = games.filter(function (g) { return !g.releaseDate; }).length;
-      var ach = games.filter(function (g) { return g.achievements && g.achievements.hasAchievements; }).length;
+      var multi = visible.filter(function (g) { return (g.platforms || []).length > 1; }).length;
+      var zh = visible.filter(function (g) { return g.names && g.names.zh; }).length;
+      var noMeta = visible.filter(function (g) { return !g.releaseDate; }).length;
+      var ach = visible.filter(function (g) { return g.achievements && g.achievements.hasAchievements; }).length;
       statsEl.innerHTML =
-        '<span>收录 <b>' + games.length + '</b> 款</span>' +
+        '<span>收录 <b>' + visible.length + '</b> 款</span>' +
         '<span>跨平台同名 <b>' + multi + '</b> 款</span>' +
         '<span>有中文名 <b>' + zh + '</b> 款</span>' +
         '<span>有成就 <b>' + ach + '</b> 款</span>' +
         '<span>元数据待补全 <b>' + noMeta + '</b> 款</span>' +
+        (hiddenCount ? '<span style="opacity:.7">已隐藏无法识别的名字 <b>' + hiddenCount + '</b> 款（Epic 无名条目）</span>' : '') +
         '<span style="opacity:.7">当前显示 ' + list.length + ' 款</span>';
 
-      if (!games.length) {
+      if (!visible.length) {
         listEl.innerHTML = '<div class="placeholder"><div class="big">[ + ]</div><h2>游戏库还是空的</h2>' +
           '<p>点右上角「添加游戏」，或先去「导入」页拉取平台数据（拉取后会自动补库）。</p></div>';
         return;
@@ -2841,7 +2959,7 @@
         var cover = g.cover ? '<img class="db-cover" src="' + g.cover + '" alt="">'
           : '<div class="db-cover"></div>';
         var plats = (g.platforms || []).map(function (p) {
-          return '<span class="db-tag">' + getPlatform(p.platform).name + '</span>';
+          return '<span class="db-tag">' + esc(dbPlatName(p.platform)) + '</span>';
         }).join('');
         var bits = [];
         if (g.releaseDate) bits.push(g.releaseDate.slice(0, 4) + ' 年');
@@ -2856,87 +2974,93 @@
           (alias ? '<div class="db-sub">' + esc(alias) + '</div>' : '') + '</div></div>';
       }).join('');
       [].forEach.call(listEl.querySelectorAll('.db-row'), function (el) {
-        el.addEventListener('click', function () { dbOpenDetail(el.getAttribute('data-id')); });
+        el.addEventListener('click', function () {
+          var g = list.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+          if (g) dbOpenEdit(g);   // 点进列表直接开编辑弹窗（省掉中间详情页）
+        });
       });
     });
   }
 
-  /* ===== 详情页 ===== */
-  var dbDetailId = null;
+  /* ===== 编辑资料弹窗 ===== */
+  var dbEditId = null;
 
   function dbGetGame(id) {
     return (DB || []).filter(function (g) { return g.id === id; })[0] || null;
   }
 
-  function dbOpenDetail(id) {
-    dbDetailId = id;
-    dbLoad().then(renderDbDetail);
+  function dbOpenEdit(g) {
+    dbEditId = g.id;
+    // 弹窗头部：封面 + 名字 + 平台，确认在改哪款
+    var head = '<div class="db-e-head">' +
+      (g.cover ? '<img src="' + esc(g.cover) + '" alt="">'
+               : '<div class="db-e-cover"></div>') +
+      '<div class="db-e-ht"><div class="db-e-hn">' + esc(g.displayName || g.id) + '</div>' +
+      '<div class="db-e-hp">' + esc((g.platforms || []).map(function (p) { return dbPlatName(p.platform); }).join(' · ')) + '</div></div></div>';
+    var row = function (key, label, val, ph, textarea) {
+      var v = esc(val == null ? '' : String(val));
+      var input = textarea
+        ? '<textarea id="db-e-' + key + '" class="db-input" placeholder="' + esc(ph || '') + '">' + v + '</textarea>'
+        : '<input id="db-e-' + key + '" class="db-input" value="' + v + '" placeholder="' + esc(ph || '') + '">';
+      return '<div class="db-e-row"><label>' + label + '</label>' + input + '</div>';
+    };
+    var listJoin = function (a) { return (a || []).join('、'); };
+    document.getElementById('db-edit-body').innerHTML =
+      head +
+      row('displayName', '显示名', g.displayName, '列表和页签里显示的名字') +
+      row('zh', '中文名', g.names && g.names.zh, '官方或常用中文译名') +
+      row('en', '英文名', g.names && g.names.en, '') +
+      row('aliases', '别名', listJoin(g.aliases), '用顿号或逗号分隔，可以填多个') +
+      row('releaseDate', '发售日期', g.releaseDate, '如 2021 或 2021-12-17') +
+      row('developers', '开发商', listJoin(g.developers), '') +
+      row('publishers', '发行商', listJoin(g.publishers), '') +
+      row('genres', '类型', listJoin(g.genres), '如 动作、角色扮演') +
+      row('shortDescription', '简介', g.shortDescription, '一两句话介绍', true);
+    document.getElementById('db-edit-hint').textContent = '';
+    document.getElementById('db-edit-mask').style.display = 'flex';
   }
 
-  function renderDbDetail() {
-    var g = dbGetGame(dbDetailId);
-    var listEl = document.getElementById('db-list');
-    if (!g || !listEl) { dbDetailId = null; renderDatabase(); return; }
-    var statsEl = document.getElementById('db-stats');
-    if (statsEl) statsEl.innerHTML = '<span>游戏详情</span>';
-    var plats = (g.platforms || []).map(function (p) {
-      var ach = p.achievements
-        ? '成就 ' + (p.achievements.unlocked || 0) + '/' + (p.achievements.total || 0) : '';
-      return '<div class="db-d-plat"><b>' + esc(getPlatform(p.platform).name) + '</b>' +
-        '<span>ID ' + esc(p.externalId || '-') + '</span>' +
-        (p.name ? '<span>原名 ' + esc(p.name) + '</span>' : '') +
-        (ach ? '<span>' + esc(ach) + '</span>' : '') + '</div>';
-    }).join('');
-    var cover = g.cover ? '<img class="db-d-cover" src="' + g.cover + '" alt="">'
-      : '<div class="db-d-cover"></div>';
-    var names = [];
-    if (g.names && g.names.en) names.push('英文名：' + esc(g.names.en));
-    if (g.names && g.names.zh && g.names.zh !== g.displayName) names.push('中文名：' + esc(g.names.zh));
-    var bits = [];
-    if (g.releaseDate) bits.push('发售：' + esc(g.releaseDate));
-    if ((g.developers || []).length) bits.push('开发：' + esc(g.developers.join('、')));
-    if ((g.publishers || []).length) bits.push('发行：' + esc(g.publishers.join('、')));
-    if ((g.genres || []).length) bits.push('类型：' + esc(g.genres.join(' / ')));
-    listEl.innerHTML =
-      '<div class="db-detail">' +
-        '<div class="db-d-top"><button class="src-btn" id="db-back">← 返回列表</button></div>' +
-        '<div class="db-d-card">' + cover +
-          '<div class="db-d-main">' +
-            '<h2 class="db-d-name">' + esc(g.displayName || g.id) + '</h2>' +
-            (names.length ? '<div class="db-d-line">' + names.join('　·　') + '</div>' : '') +
-            (bits.length ? '<div class="db-d-line">' +
-              bits.map(function (s) { return '<span class="db-d-bit">' + s + '</span>'; }).join('') + '</div>' : '') +
-            ((g.aliases || []).length ? '<div class="db-d-line">别名：' + esc(g.aliases.join('、')) + '</div>' : '') +
-            (g.shortDescription ? '<div class="db-d-desc">' + esc(g.shortDescription) + '</div>' : '') +
-            '<div class="db-d-plats">' + plats + '</div>' +
-            '<div class="db-d-line" style="opacity:.65">库内 ID：' + esc(g.id) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="db-d-edit">' +
-          '<div class="db-d-edit-title">修改资料 —— 改显示名 / 加别名。保存后会锁定，以后拉取数据不会覆盖你改的内容。</div>' +
-          '<div class="db-d-edit-row"><label>显示名</label><input id="db-d-name-in" value="' + esc(g.displayName || '') + '"></div>' +
-          '<div class="db-d-edit-row"><label>别名</label><input id="db-d-alias-in" value="' + esc((g.aliases || []).join('、')) + '" placeholder="用顿号或逗号分隔，可以填多个"></div>' +
-          '<div class="db-d-edit-row"><label></label><button class="src-btn" id="db-d-save">保存</button><span id="db-d-hint" class="db-add-hint"></span></div>' +
-        '</div>' +
-      '</div>';
-    document.getElementById('db-back').addEventListener('click', function () { dbDetailId = null; renderDatabase(); });
-    document.getElementById('db-d-save').addEventListener('click', dbSaveDetail);
+  function dbCloseEdit() {
+    document.getElementById('db-edit-mask').style.display = 'none';
+    dbEditId = null;
   }
 
-  function dbSaveDetail() {
-    var g = dbGetGame(dbDetailId);
-    var hint = document.getElementById('db-d-hint');
+  function dbSaveEdit() {
+    var g = dbGetGame(dbEditId);
+    var hint = document.getElementById('db-edit-hint');
     if (!g || !hint) return;
-    var name = String(document.getElementById('db-d-name-in').value || '').trim();
-    var aliasRaw = String(document.getElementById('db-d-alias-in').value || '').trim();
-    var aliases = aliasRaw ? aliasRaw.split(/[,，、;；]/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
+    var val = function (key) { return String(document.getElementById('db-e-' + key).value || '').trim(); };
+    var splitList = function (s) {
+      return s ? s.split(/[,，、;；]/).map(function (t) { return t.trim(); }).filter(Boolean) : [];
+    };
+    var name = val('displayName');
     if (!name) { hint.textContent = '显示名不能为空。'; return; }
     hint.textContent = '正在保存…';
     var entry = JSON.parse(JSON.stringify(g));
-    entry.displayName = name;
-    entry.aliases = aliases;
-    // 锁定这两个字段：以后平台拉取 / 元数据补全都不会覆盖用户手改的内容
-    entry.overrides = Object.assign({}, g.overrides || {}, { displayName: true, aliases: true });
+    entry.overrides = Object.assign({}, g.overrides || {});
+    var locked = [];
+    if (name !== g.displayName) { entry.displayName = name; entry.overrides.displayName = true; locked.push(true); }
+    var zh = val('zh'), en = val('en');
+    if (zh !== (g.names && g.names.zh || '') || en !== (g.names && g.names.en || '')) {
+      entry.names = entry.names || { en: null, zh: null, zhSource: null };
+      if (zh) { entry.names.zh = zh; if (!entry.names.zhSource || entry.names.zhSource === 'steam-appdetails') entry.names.zhSource = 'manual'; }
+      else entry.names.zh = null;
+      entry.names.en = en || entry.names.en;
+      entry.overrides.names = true; locked.push(true);
+    }
+    var aliasNew = splitList(val('aliases'));
+    if (aliasNew.join('|') !== (g.aliases || []).join('|')) { entry.aliases = aliasNew; entry.overrides.aliases = true; locked.push(true); }
+    var rd = val('releaseDate');
+    if (rd !== (g.releaseDate || '')) { entry.releaseDate = rd || null; entry.overrides.releaseDate = true; locked.push(true); }
+    var dv = splitList(val('developers'));
+    if (dv.join('|') !== (g.developers || []).join('|')) { entry.developers = dv; entry.overrides.developers = true; locked.push(true); }
+    var pb = splitList(val('publishers'));
+    if (pb.join('|') !== (g.publishers || []).join('|')) { entry.publishers = pb; entry.overrides.publishers = true; locked.push(true); }
+    var ge = splitList(val('genres'));
+    if (ge.join('|') !== (g.genres || []).join('|')) { entry.genres = ge; entry.overrides.genres = true; locked.push(true); }
+    var sd = val('shortDescription');
+    if (sd !== (g.shortDescription || '')) { entry.shortDescription = sd || null; entry.overrides.shortDescription = true; locked.push(true); }
+    if (locked.length) entry.meta = Object.assign({}, entry.meta, { manual: true });
     fetch('/api/library/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2944,8 +3068,8 @@
     }).then(function (r) { return r.json(); }).then(function (j) {
       if (j && j.ok) {
         DB = null;                          // 强制下次重新读库
-        hint.textContent = '已保存 ✓';
-        dbLoad().then(renderDbDetail);
+        hint.textContent = '已保存 ✓（锁定 ' + locked.length + ' 个字段）';
+        setTimeout(function () { dbCloseEdit(); dbLoad().then(renderDatabase); }, 500);
       } else {
         hint.textContent = '保存失败：' + ((j && j.error) || '未知错误');
       }
@@ -3095,6 +3219,7 @@
     [].forEach.call(document.querySelectorAll('.page'), function (p) {
       p.classList.toggle('active', p.id === 'page-' + page);
     });
+    window.scrollTo(0, 0);   // 切页后回到顶部（上一页可能停得很深，尤其导入页）
     if (page === 'career') { renderCareer(); }
     if (page === 'library') { renderLibrary(); }
     if (page === 'db') { renderDatabase(); }
@@ -3299,6 +3424,24 @@
     if (dbQ) dbQ.addEventListener('keydown', function (e) { if (e.key === 'Enter') dbDoSearch(); });
     var dbManualAdd = document.getElementById('db-manual-add');
     if (dbManualAdd) dbManualAdd.addEventListener('click', dbAddManual);
+    // 导入页分区导航：点击滚到对应板块
+    [].forEach.call(document.querySelectorAll('.imp-nav-btn'), function (b) {
+      b.addEventListener('click', function () {
+        var t = document.getElementById(b.getAttribute('data-target'));
+        if (!t) return;
+        [].forEach.call(document.querySelectorAll('.imp-nav-btn'), function (x) {
+          x.classList.toggle('active', x === b);
+        });
+        t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+    // 编辑资料弹窗
+    var dbEditClose = document.getElementById('db-edit-close');
+    if (dbEditClose) dbEditClose.addEventListener('click', dbCloseEdit);
+    var dbEditMask = document.getElementById('db-edit-mask');
+    if (dbEditMask) dbEditMask.addEventListener('click', function (e) { if (e.target === dbEditMask) dbCloseEdit(); });
+    var dbEditSave = document.getElementById('db-edit-save');
+    if (dbEditSave) dbEditSave.addEventListener('click', dbSaveEdit);
 
     renderLibrary();
     renderCareer();
