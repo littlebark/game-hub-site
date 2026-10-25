@@ -1144,7 +1144,11 @@
       btn.addEventListener('click', function () {
         var pid = btn.getAttribute('data-pid');
         var src = btn.getAttribute('data-src');
-        if (pid !== 'all' && src && !sourceData(src)) { navigate('import'); return; }
+        if (pid !== 'all' && src && !sourceData(src)) {
+          // 线上只读版没有「导入页」可去：就地切到该页签，显示「该平台暂无游戏」占位（2026-10-25）
+          if (window.GH_STATIC) { currentPlatform = pid; renderLibrary(); return; }
+          navigate('import'); return;
+        }
         currentPlatform = pid;
         renderLibrary();
       });
