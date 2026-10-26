@@ -2796,3 +2796,40 @@ body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
   background: var(--bg-2, #f5f5f5); cursor: zoom-in;
 }
 @media (max-width: 760px) { .proof-img { height: 200px; } }
+
+/* ==================== PS3 奖杯（索尼专有样式，2026-10-25） ====================
+ * 仿 PS3 主机内 XMB 奖杯列表：深色横条 + 左侧图标 + 等级标签；
+ * 锁定的灰图（原图彩色，CSS 滤镜压灰，与主机行为一致）；只有 emu-ps3 用这套皮肤。 */
+.psn-trophy-list { margin: 4px 0 10px; }
+.psn-head {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #141414; color: #fff; padding: 8px 12px; font-size: 13px; font-weight: 600;
+}
+.psn-counts { color: #9a9a9a; font-size: 12px; font-weight: 400; }
+.psn-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: #1b1b1b; border-bottom: 1px solid #333;
+  margin-bottom: 5px;                /* 行与行之间留点缝，别贴成一块 */
+  padding: 10px 12px; color: #eee;
+}
+.psn-row:last-child { border-bottom: 0; }
+.psn-img { position: relative; width: 56px; height: 56px; flex: 0 0 56px; background: #000; }
+.psn-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.psn-row.off .psn-img img { filter: grayscale(1) brightness(.55); }
+.psn-tick {
+  position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px;
+  background: #2e7d32; color: #fff; border-radius: 50%;
+  font-size: 12px; font-style: normal; display: flex; align-items: center; justify-content: center;
+}
+.psn-info { flex: 1; min-width: 0; }
+.psn-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.psn-name { font-weight: 600; font-size: 14px; color: #fff; }
+.psn-row.off .psn-name { color: #bdbdbd; }
+.psn-grade { font-size: 11px; padding: 1px 8px; border-radius: 9px; color: #111; font-weight: 600; }
+.psn-grade.g-B { background: #cd8f52; }
+.psn-grade.g-S { background: #c8d2d8; }
+.psn-grade.g-G { background: #ecc94b; }
+.psn-grade.g-P { background: #8fd8d2; }
+.psn-desc { font-size: 12.5px; color: #aaa; margin-top: 2px; word-break: break-word; }
+.psn-row.off .psn-desc { color: #8a8a8a; }
+.psn-meta { font-size: 11.5px; color: #777; margin-top: 3px; }

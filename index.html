@@ -287,6 +287,11 @@
             <input id="pn-ach-folder" class="db-input" type="text" style="flex:1;min-width:220px" placeholder="AchievementWatcher 导出目录（留空 = 不导入成就）" title="PC 成就数据所在文件夹">
             <button class="src-btn" id="pn-ach-browse" type="button" style="display:none">浏览…</button>
           </div>
+          <div class="ra-actions pn-threshold-row">
+            <span class="hint" style="margin-top:0">RPCS3 路径：</span>
+            <input id="pn-rpcs3-folder" class="db-input" type="text" style="flex:1;min-width:220px" placeholder="RPCS3 模拟器根目录（留空 = 不导入 PS3）" title="RPCS3 根目录（里面应有 GuiConfigs 和 dev_hdd0）">
+            <button class="src-btn" id="pn-rpcs3-browse" type="button" style="display:none">浏览…</button>
+          </div>
           <div id="pn-msg" class="hint">两个页签都建成后，在游戏库顶部页签里查看。</div>
 
           <details class="ra-fallback" id="pn-manage-wrap">
@@ -1546,6 +1551,7 @@
       document.getElementById('pn-th-emu').value = s.config.emuThresholdMinutes;
       document.getElementById('pn-th-pc').value = s.config.pcThresholdMinutes;
       document.getElementById('pn-ach-folder').value = s.config.achFolder || '';
+      document.getElementById('pn-rpcs3-folder').value = s.config.rpcs3Folder || '';
     }
 
     function loadStatus() {
@@ -1590,6 +1596,7 @@
           emuThresholdMinutes: Number(document.getElementById('pn-th-emu').value) || 0,
           pcThresholdMinutes: Number(document.getElementById('pn-th-pc').value) || 0,
           achFolder: String(document.getElementById('pn-ach-folder').value || '').trim(),
+          rpcs3Folder: String(document.getElementById('pn-rpcs3-folder').value || '').trim(),
         }),
       }).then(function (r) { return r.json(); }).then(function (j) {
         if (!j || !j.ok) throw new Error((j && j.error) || '保存失败');
@@ -1607,28 +1614,30 @@
     };
 
     /* ---------- 「浏览…」：弹 Windows 原生选文件夹窗口（本地程序能力，2026-10-25） ---------- */
-    var browseBtn = document.getElementById('pn-ach-browse');
-    (function () {
+    function setupBrowse(btnId, inputId) {
+      var browseBtn = document.getElementById(btnId);
       fetch('/api/pick-folder/available').then(function (r) { return r.json(); }).then(function (j) {
         if (j && j.ok) browseBtn.style.display = '';
       }).catch(function () { /* 弹不了就留在手输模式 */ });
-    })();
-    browseBtn.onclick = function () {
-      var btn = this;
-      btn.disabled = true;
-      say('请在弹出的窗口里选择文件夹…（选完自动填入）');
-      fetch('/api/pick-folder', { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (j) {
-          if (!j || !j.ok) throw new Error((j && j.error) || '打开选择窗口失败');
-          if (j.canceled) { say('已取消选择。'); return null; }
-          document.getElementById('pn-ach-folder').value = j.path;
-          say('✓ 已选择：<b>' + j.path + '</b>（记得点「保存设置并重建」）', 'ok');
-          return null;
-        })
-        .catch(function (e) { say('✗ ' + e.message + '（也可以直接在输入框里手输路径）', 'bad'); })
-        .then(function () { btn.disabled = false; });
-    };
+      browseBtn.onclick = function () {
+        var btn = this;
+        btn.disabled = true;
+        say('请在弹出的窗口里选择文件夹…（选完自动填入）');
+        fetch('/api/pick-folder', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (!j || !j.ok) throw new Error((j && j.error) || '打开选择窗口失败');
+            if (j.canceled) { say('已取消选择。'); return null; }
+            document.getElementById(inputId).value = j.path;
+            say('✓ 已选择：<b>' + j.path + '</b>（记得点「保存设置并重建」）', 'ok');
+            return null;
+          })
+          .catch(function (e) { say('✗ ' + e.message + '（也可以直接在输入框里手输路径）', 'bad'); })
+          .then(function () { btn.disabled = false; });
+      };
+    }
+    setupBrowse('pn-ach-browse', 'pn-ach-folder');
+    setupBrowse('pn-rpcs3-browse', 'pn-rpcs3-folder');
 
     /* ---------- 管理列表 ---------- */
     var manageEl = document.getElementById('pn-manage');

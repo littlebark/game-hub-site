@@ -1315,7 +1315,7 @@
     epic:   { hasAchievements: false, achStyle: 'none' },     // Epic 成就接口已关闭，平台层面没有成就 → 不渲染成就区
     phone:  { hasAchievements: false, achStyle: 'none' },     // 手机（屏幕账本）只记使用时长，没有成就
     pc:     { hasAchievements: true,  achStyle: 'compact' },  // PC（Playnite 本地库）只有拿到本地成就数据（AchievementWall）才显示成就——gameHasAchievements 里对 pc 有特判
-    emulator: { hasAchievements: false, achStyle: 'none' },   // 模拟器（本地计数器）没有成就数据
+    emulator: { hasAchievements: true,  achStyle: 'compact' },  // 模拟器：RPCS3(PS3) 有奖杯数据（compact 式）；没数据的老游戏走 gameHasAchievements 的特判不渲染
     switch: { hasAchievements: false, achStyle: 'none' },     // 任天堂没有成就系统（旧占位，保留）
     retroachievements: { hasAchievements: true, achStyle: 'compact' }
   };
@@ -1328,6 +1328,7 @@
 
   function platformDetail(platform) {
     if (isNintendoPlatform(platform)) return { hasAchievements: false, achStyle: 'none' };
+    if (platform === 'emu-ps3') return { hasAchievements: true, achStyle: 'ps3' };   // PS3 奖杯 = 索尼专有样式（用户 2026-10-25 定）
     if (isEmuPlatform(platform)) return PLATFORM_DETAIL.emulator;   // emu-* 主机共用模拟器一张表
     return PLATFORM_DETAIL[platform] || { hasAchievements: true, achStyle: 'compact' };
   }
@@ -1349,8 +1350,8 @@
   /** 这款游戏的详情页要不要显示成就区（任一所属平台有成就系统就算有） */
   function gameHasAchievements(game) {
     return (game.platforms || []).some(function (p) {
-      // PC 特判（2026-10-25）：只有真拿到本地成就数据才显示成就区，没数据的老 PC 游戏照旧不渲染
-      if (p.platform === 'pc') return (p.achievements.items || []).length > 0;
+      // PC / 模拟器特判：只有真拿到本地成就/奖杯数据才显示成就区，没数据的照旧不渲染
+      if (p.platform === 'pc' || isEmuPlatform(p.platform)) return (p.achievements.items || []).length > 0;
       return platformDetail(p.platform).hasAchievements;
     });
   }
@@ -1420,6 +1421,36 @@
     '</div>';
   }
 
+  /** PS3 奖杯列表（索尼专有样式，仿主机内 XMB 奖杯界面，2026-10-25）：
+   *  全量列出（含锁定的），锁定的灰图；隐藏奖杯数据层已打码「隐藏奖杯」；
+   *  头部一行奖杯进度 + 铜银金白金分类统计。 */
+  function ps3TrophyListHtml(p) {
+    var items = p.achievements.items || [];
+    var gradeName = { P: '白金', G: '金', S: '银', B: '铜' };
+    var counts = { P: 0, G: 0, S: 0, B: 0 };
+    items.forEach(function (it) { if (counts[it.type] !== undefined) counts[it.type]++; });
+    var pct = p.achievements.total ? Math.round((p.achievements.unlocked / p.achievements.total) * 100) : 0;
+    var head = '<div class="psn-head"><span>奖杯进度 ' + pct + '%（' + p.achievements.unlocked + '/' + p.achievements.total + '）</span>' +
+      '<span class="psn-counts">铜 ' + counts.B + ' · 银 ' + counts.S + ' · 金 ' + counts.G + ' · 白金 ' + counts.P + '</span></div>';
+    var rows = items.map(function (it) {
+      var on = !!it.unlockedAt;
+      var g = gradeName[it.type] || '';
+      return '<div class="psn-row ' + (on ? 'on' : 'off') + '">' +
+        '<div class="psn-img">' + (it.iconUrl
+            ? '<img src="' + esc(it.iconUrl) + '" alt="" loading="lazy" onerror="this.remove()">'
+            : '★') +
+          (on ? '<i class="psn-tick">✓</i>' : '') + '</div>' +
+        '<div class="psn-info">' +
+          '<div class="psn-top"><span class="psn-name">' + (on ? '' : '锁定的奖杯：') + esc(it.name) + '</span>' +
+            (g ? '<span class="psn-grade g-' + esc(it.type) + '">' + g + '杯</span>' : '') + '</div>' +
+          '<div class="psn-desc">' + esc(it.description || '') + '</div>' +
+          '<div class="psn-meta">' + (on ? ('解锁于 ' + datePart(it.unlockedAt)) : '未解锁') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="psn-trophy-list">' + head + rows + '</div>';
+  }
+
   function openDetail(game) {
     var a = aggGame(game);
 
@@ -1434,8 +1465,11 @@
       cells += cell('时长', formatMinutes(p.totalMinutes));
       if (p.lastPlayedAt) cells += cell('最后游玩', datePart(p.lastPlayedAt));
       if (p.firstPlayedAt) cells += cell('首次游玩', datePart(p.firstPlayedAt));
-      // 成就一行：该平台没有成就系统（如 Switch）就不显示；PC 只有真有成就数据才显示
-      if (platformDetail(p.platform).hasAchievements && (p.platform !== 'pc' || (p.achievements.items || []).length > 0)) {
+      // 成就一行：该平台没有成就系统（如 Switch）就不显示；PC / 模拟器只有真有成就数据才显示
+      var achData = (p.achievements.items || []).length > 0;
+      var achCellOk = platformDetail(p.platform).hasAchievements &&
+        ((p.platform === 'pc' || isEmuPlatform(p.platform)) ? achData : true);
+      if (achCellOk) {
         cells += cell('成就', achCountText(p.achievements.unlocked, p.achievements.total));
       }
       if (p.launchSessions && p.launchSessions.length) cells += cell('启动次数', p.launchSessions.length);
@@ -1488,6 +1522,9 @@
         var body = (st === 'card')
           // Xbox 官方风大卡片：大图占一半、文字占一半，带 G 分数 / 获得率 / 进度条
           ? '<div class="xach-grid">' + p.achievements.items.map(xboxAchCardHtml).join('') + '</div>'
+          // PS3 奖杯：索尼主机原版样式（全量列出，锁定的灰图，隐藏奖杯打码）
+          : (st === 'ps3')
+          ? ps3TrophyListHtml(p)
           : '<div class="ach-list">' + p.achievements.items.map(compactAchHtml).join('') + '</div>';
         return (multi ? '<div class="ach-sub">' + esc(getPlatform(p.platform).name) + ' 成就</div>' : '') + body;
       }).join('');
