@@ -221,6 +221,16 @@
             <button class="src-btn active" id="ns-pull-btn" type="button">重新拉取游玩记录</button>
             <span class="hint">拉最新清单 → 补按天记录 → 重建页面数据，后台一条龙，不用等它</span>
           </div>
+
+          <div class="ra-actions">
+            <span class="hint" style="margin-top:0">老 Switch 导出文件夹：</span>
+            <input id="ns-cfw-folder" class="db-input" type="text" style="flex:1;min-width:200px" placeholder="nx-activitylog 导出的 export.json 所在文件夹" spellcheck="false">
+            <button class="src-btn" id="ns-cfw-browse" type="button" style="display:none">浏览…</button>
+            <button class="src-btn" id="ns-cfw-btn" type="button">导入</button>
+            <button class="src-btn" id="ns-cfw-cover-btn" type="button" title="给老 Switch 的游戏按名字搜 SteamGridDB 补竖版封面（已有本地图的自动跳过）">补封面</button>
+          </div>
+          <div id="ns-cfw-msg" class="hint" style="margin-top:-4px">把破解机上 nx-activitylog 导出的 export.json 放进一个文件夹，指到这里。官方账号已有的游戏不导入（官方为准），总时长不足 1 小时的也不导入（多半是试玩）。</div>
+
           <div class="ra-actions">
             <button class="src-btn" id="ns-logout-btn" type="button">解除绑定</button>
             <span class="hint">删掉本机保存的登录凭证</span>
@@ -1296,6 +1306,97 @@
       } catch (e) { setMsg('err', '请求失败：' + e.message + '（服务器没开的话，双击 start.bat）'); }
       pullBtn.disabled = false;
       refresh();
+    };
+
+    /* 老 Switch 导入（2026-10-27）：nx-activitylog 的 export.json → 并入任天堂数据。
+     * 过滤在服务端构建层：官方已有的 titleId 跳过（官方为准），总时长 <1 小时跳过。 */
+    var cfwInput = document.getElementById('ns-cfw-folder');
+    var cfwBrowse = document.getElementById('ns-cfw-browse');
+    var cfwBtn = document.getElementById('ns-cfw-btn');
+    var cfwMsg = document.getElementById('ns-cfw-msg');
+    function cfwSay(kind, txt) {
+      if (!cfwMsg) return;
+      cfwMsg.className = 'hint';
+      if (kind === 'ok') cfwMsg.innerHTML = '<span style="color:#2e7d32">✓ ' + txt + '</span>';
+      else if (kind === 'err') cfwMsg.innerHTML = '<span style="color:#c62828">✗ ' + txt + '</span>';
+      else cfwMsg.textContent = txt;
+    }
+    if (cfwBrowse) {
+      fetch('/api/pick-folder/available').then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok) cfwBrowse.style.display = '';
+      }).catch(function () { /* 弹不了就留在手输模式 */ });
+      cfwBrowse.onclick = function () {
+        cfwBrowse.disabled = true;
+        fetch('/api/pick-folder', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.ok && j.path) cfwInput.value = j.path;
+            else if (j && j.error) cfwSay('err', j.error);
+          })
+          .catch(function () {})
+          .then(function () { cfwBrowse.disabled = false; });
+      };
+    }
+    if (cfwBtn) cfwBtn.onclick = async function () {
+      cfwBtn.disabled = true;
+      var folder = (cfwInput.value || '').trim();
+      if (!folder) {
+        cfwSay('err', '先填文件夹路径（里面有 nx-activitylog 导出的 export.json）');
+        cfwBtn.disabled = false;
+        return;
+      }
+      cfwSay('hint', '正在解析并合并…（几秒钟，不用等按天记录）');
+      try {
+        var r = await (await fetch('/api/nintendo/cfw/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: folder }),
+        })).json();
+        if (!r.ok) throw new Error(r.error || '导入失败');
+        var acc = (r.accounts || []).map(function (a) { return a.name + ' ' + a.titles + ' 款'; }).join('、');
+        cfwSay('ok', '导入完成：文件里 ' + acc + '；官方已有跳过 <b>' + r.skipped.official +
+          '</b> 款、不足 1 小时跳过 <b>' + r.skipped.short + '</b> 款、新增 <b>' + r.added + '</b> 款。' +
+          '刷新页面到 Nintendo 页签即可看到（总日历里也有它的按天记录）。');
+      } catch (e) { cfwSay('err', e.message); }
+      cfwBtn.disabled = false;
+    };
+    fetch('/api/nintendo/cfw/status').then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) return;
+      if (j.folder && !cfwInput.value) cfwInput.value = j.folder;
+      if (j.imported) cfwSay('hint', '上次导入 ' + String(j.importedAt || '').slice(0, 10) + '，老 Switch 游戏现有 ' + j.titles + ' 款。重新导入同文件夹会按最新官方清单重新过滤。');
+    }).catch(function () {});
+
+    /* 补封面（SteamGridDB）：后台跑，轮询进度（三闸门：在跑才启动、终态即停、次数硬上限） */
+    var coverBtn = document.getElementById('ns-cfw-cover-btn');
+    var coverPollTimer = null, coverPollTicks = 0;
+    if (coverBtn) coverBtn.onclick = async function () {
+      coverBtn.disabled = true;
+      coverPollTicks = 0;
+      try {
+        var r = await (await fetch('/api/nintendo/cfw/covers', { method: 'POST' })).json();
+        if (r.ok && r.started) {
+          cfwSay('hint', '开始补封面（SteamGridDB 按游戏名搜索，串行慢慢来）…');
+          coverPollTimer = setInterval(async function () {
+            coverPollTicks += 1;
+            if (coverPollTicks > 120) { clearInterval(coverPollTimer); coverBtn.disabled = false; return; }
+            try {
+              var p = await (await fetch('/api/nintendo/cfw/covers/progress')).json();
+              if (p.state === 'running') {
+                cfwSay('hint', '补封面中 ' + (p.done || 0) + '/' + (p.total || '?') +
+                  '（命中 ' + (p.hits || 0) + ' / 没搜到 ' + (p.miss || 0) + '）当前：' + (p.current || '…'));
+                return;
+              }
+              clearInterval(coverPollTimer);
+              coverBtn.disabled = false;
+              if (p.state === 'done') cfwSay('ok', '补封面完成：命中 <b>' + (p.hits || 0) + '</b> 款、没搜到 ' + (p.miss || 0) +
+                ' 款。刷新页面即可看到（Nintendo 页签和统一库都更新了）。');
+              else if (p.state === 'failed') cfwSay('err', '补封面失败：' + (p.error || '未知错误'));
+            } catch (e) { /* 轮询失败继续等下一轮 */ }
+          }, 3000);
+        } else {
+          cfwSay('hint', r.reason === 'already-running' ? '封面已经在补了，等它跑完就行。' : (r.error || '没能开始'));
+          coverBtn.disabled = false;
+        }
+      } catch (e) { cfwSay('err', e.message); coverBtn.disabled = false; }
     };
 
     refresh();

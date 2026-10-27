@@ -444,15 +444,27 @@
     return false;
   }
 
+  /** RA 已通关徽章（beaten）：extra.awardState === 'beaten'。
+   * mastered（已精通）不走这里 —— 它有满成就金框，金框优先。 */
+  function isBeatenAward(game) {
+    var ps = game.platforms || [];
+    for (var i = 0; i < ps.length; i++) {
+      if ((ps[i].extra || {}).awardState === 'beaten') return true;
+    }
+    return false;
+  }
+
   function coverHtml(game, big) {
     var color = coverColor(game.title);
     var full = isFullAchievement(game);
+    var beaten = !full && isBeatenAward(game);
     // 手机图标是 144×144 的透明 PNG（圆角已烘在图里）→ 底色用白，别让随机色块从圆角漏出来
     var isPh = !!phoneEntry(game);
-    // 金框保留，星星不放封面上（用户 2026-10-19：星星改放成就进度条右边）
-    return '<div class="cover' + (big ? ' big' : '') + (full ? ' full' : '') + (isPh ? ' ph' : '') +
-      '" style="background:' + (isPh ? '#fff' : color) + '"' +
-      (full ? ' title="成就已全收集（100%）"' : '') + '>' +
+    // 框：满成就金框 > RA 已通关绿框 > 无框；星星/勾都不放封面上（放成就进度条右边）
+    var coverTitle = full ? ' title="成就已全收集（100%）"'
+      : (beaten ? ' title="RA 已通关"' : '');
+    return '<div class="cover' + (big ? ' big' : '') + (full ? ' full' : '') + (beaten ? ' beaten' : '') + (isPh ? ' ph' : '') +
+      '" style="background:' + (isPh ? '#fff' : color) + '"' + coverTitle + '>' +
       '<span>' + esc(firstChar(game.title)) + '</span>' +
       (game.cover ? '<img src="' + esc(game.cover) + '" alt="" onerror="this.remove()">' : '') +
       '</div>';
@@ -537,6 +549,7 @@
         '<div class="ach-bar-row">' +
           '<div class="ach-bar"><i style="width:' + pct + '%"></i></div>' +
           (isFullAchievement(game) ? '<i class="ach-star" title="成就已全收集（100%）">★</i>' : '') +
+          (isBeatenAward(game) ? '<i class="ach-beaten" title="RA 已通关">✓</i>' : '') +
         '</div>' +
         '<div class="ach-icons">' + icons + '</div>' +
         '</div>';
@@ -590,13 +603,14 @@
 
     var a = aggGame(best);
     var full = isFullAchievement(best);
+    var heroBeaten = !full && isBeatenAward(best);
     var coverInner = '<span>' + esc(firstChar(best.title)) + '</span>' +
       (best.cover ? '<img src="' + esc(best.cover) + '" alt="" onerror="this.remove()">' : '');
     el.className = 'hero';
     el.innerHTML =
       '<div class="hero-inner">' +
-        '<div class="hero-cover' + (full ? ' full' : '') + '" style="background:' + coverColor(best.title) + '"' +
-          (full ? ' title="成就已全收集（100%）"' : '') + '>' + coverInner + '</div>' +
+        '<div class="hero-cover' + (full ? ' full' : '') + (heroBeaten ? ' beaten' : '') + '" style="background:' + coverColor(best.title) + '"' +
+          (full ? ' title="成就已全收集（100%）"' : (heroBeaten ? ' title="RA 已通关"' : '')) + '>' + coverInner + '</div>' +
         '<div>' +
           '<div class="hero-label">最近游玩</div>' +
           '<div class="hero-title">' + esc(best.title) + '</div>' +

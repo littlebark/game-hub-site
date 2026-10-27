@@ -439,13 +439,51 @@ html {
 
 .ach-bar-row .ach-bar { flex: 1; }
 
+/* 满成就金星：金圆 + 白星徽章（与 .ach-beaten 同款，17px 圆底）
+ * 2026-10-27 用户拍板：绿勾改成圆徽章后，金星也统一成同款，避免对比之下显单薄 */
 .ach-star {
   flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #f0b01e;
+  color: #fff;
   font-style: normal;
-  font-size: 14px;
-  line-height: 1;
-  color: gold;
-  text-shadow: 0 1px 3px rgba(160, 120, 0, 0.45);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(160, 120, 0, 0.45);
+  cursor: help;
+}
+
+/* ---------- RA 已通关（beaten 徽章）→ 绿框 + 绿勾 ----------
+ * 仿金框写法：beaten 来自 RA 官方 API 的通关徽章（extra.awardState='beaten'）。
+ * 优先级：满成就金框 > 已通关绿框（coverHtml 里 full 命中时不再加 beaten）。
+ * 封面只有 52px，绿框用 3px + 亮绿才够显眼（金框自带黄色高显性，2px 就够）。
+ * 勾不用细字形，改成实心绿圆 + 白勾的小徽章（17px），一眼能看见。 */
+.cover.beaten,
+.hero-cover.beaten {
+  border: 3px solid #4caf50;
+  box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.35), 0 0 14px rgba(76, 175, 80, 0.50);
+}
+
+/* 已通关绿勾徽章：跟 .ach-star 同一个位置（成就进度条右侧） */
+.ach-beaten {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #4caf50;
+  color: #fff;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(46, 125, 50, 0.45);
   cursor: help;
 }
 
