@@ -2846,13 +2846,15 @@
   }
 
   function loadYearStats(year) {
+    var sel = document.getElementById('year-select');
+    var box = document.getElementById('year-stats');
+    if (!box) return;
     // 线上只读版：打包时已把各年份聚合结果算好放进 data_year.js（window.GAME_DATA_YEAR）
     if (window.GH_STATIC) {
-      var sel0 = document.getElementById('year-select');
       var sd = window.GAME_DATA_YEAR || null;
       var keys = sd && sd.stats ? Object.keys(sd.stats) : [];
       if (!keys.length) {
-        if (sel0) sel0.innerHTML = '<option value="">—</option>';
+        if (sel) sel.innerHTML = '<option value="">—</option>';
         box.className = 'muted';
         box.innerHTML = '线上版暂无年度统计数据。';
         return;
@@ -2869,9 +2871,6 @@
       renderYearStats(sj);
       return;
     }
-    var sel = document.getElementById('year-select');
-    var box = document.getElementById('year-stats');
-    if (!box) return;
     var cacheKey = String(year || '');
     if (yearStatsCache[cacheKey]) {
       var c = yearStatsCache[cacheKey];
