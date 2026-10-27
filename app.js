@@ -2846,7 +2846,29 @@
   }
 
   function loadYearStats(year) {
-    if (window.GH_STATIC) return;   // 线上只读版没有服务端，且该面板本就隐藏
+    // 线上只读版：打包时已把各年份聚合结果算好放进 data_year.js（window.GAME_DATA_YEAR）
+    if (window.GH_STATIC) {
+      var sel0 = document.getElementById('year-select');
+      var sd = window.GAME_DATA_YEAR || null;
+      var keys = sd && sd.stats ? Object.keys(sd.stats) : [];
+      if (!keys.length) {
+        if (sel0) sel0.innerHTML = '<option value="">—</option>';
+        box.className = 'muted';
+        box.innerHTML = '线上版暂无年度统计数据。';
+        return;
+      }
+      var sy = String(year || sd.defaultYear || keys[keys.length - 1]);
+      var sj = sd.stats[sy];
+      fillYearSelect(sd.years || keys, sy);
+      if (!sj) {
+        box.className = 'muted';
+        box.innerHTML = '该年份暂无统计数据。';
+        return;
+      }
+      box.className = '';
+      renderYearStats(sj);
+      return;
+    }
     var sel = document.getElementById('year-select');
     var box = document.getElementById('year-stats');
     if (!box) return;

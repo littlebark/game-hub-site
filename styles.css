@@ -2749,9 +2749,8 @@ body.gh-static .ph-hidden-bar { display: none !important; }
 body.gh-static .src-switch { display: none !important; }
 body.gh-static .sidebar-foot { display: none !important; }
 body.gh-static .nav-btn[data-page="db"] { display: none !important; }
-body.gh-static #panel-year,
+/* 线上只读版：年度统计 2026-10-27 起打包静态数据跟着发布，只隐藏依赖服务端的近12周面板 */
 body.gh-static #panel-week { display: none !important; }
-body.gh-static .cn-item[data-panel="panel-year"],
 body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
 
 /* ==================== 年度统计 v2（2026-10-21 重设计） ==================== */
