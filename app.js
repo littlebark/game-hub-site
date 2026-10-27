@@ -429,6 +429,7 @@
 
   var currentPlatform = 'all';
   var currentSort = 'lastPlayed';   // lastPlayed | playtime | achievements | title
+  var ninYearFilter = '';           // 任天堂列表「按首次游玩年份」筛选（'' = 全部）
 
   /** 封面 HTML：有图用图（图挂了露出首字母色块），没图用首字母色块 */
   /**
@@ -1193,11 +1194,48 @@
     }
     sortBar.querySelector('#sort-select').value = currentSort;
 
+    // 任天堂列表专属：「按首次游玩年份」筛选（用户 2026-10-27 定，默认全部，用 firstPlayedAt 匹配）
+    var isNinGroup = currentPlatform === 'nintendo' || isNintendoPlatform(currentPlatform);
+    var yWrap = sortBar.querySelector('.nin-year-wrap');
+    if (isNinGroup) {
+      if (!yWrap) {
+        yWrap = document.createElement('span');
+        yWrap.className = 'nin-year-wrap';
+        yWrap.innerHTML = '<span class="sort-label">首次游玩</span><select id="nin-year-select"></select>';
+        sortBar.appendChild(yWrap);
+        yWrap.querySelector('#nin-year-select').addEventListener('change', function (e) {
+          ninYearFilter = e.target.value;
+          renderLibrary();
+        });
+      }
+    } else if (yWrap) {
+      yWrap.parentNode.removeChild(yWrap);   // 切到别的页签就收起来
+    }
+
     // 列表：手机页签用手机自己的数据池（手机应用不进「全部」，用户 2026-10-20 拍板）
     var games = displayPool().slice();
     if (currentPlatform !== 'all') {
       games = games.filter(function (g) { return matchesPlatform(g, currentPlatform); });
     }
+
+    // 年份筛选：候选年份从「当前页签里的游戏」的首次游玩时间取，倒序排（新的在前）
+    if (isNinGroup) {
+      var ySel = sortBar.querySelector('#nin-year-select');
+      var yearsSet = {};
+      games.forEach(function (g) {
+        var y = ninFirstYear(g);
+        if (y) yearsSet[y] = 1;
+      });
+      var ys = Object.keys(yearsSet).sort().reverse();
+      if (ninYearFilter && ys.indexOf(ninYearFilter) < 0) ninYearFilter = '';   // 换主机子页签后该年没游戏了 → 回到全部
+      ySel.innerHTML = '<option value="">全部年份</option>' + ys.map(function (y) {
+        return '<option value="' + y + '"' + (y === ninYearFilter ? ' selected' : '') + '>' + y + ' 年</option>';
+      }).join('');
+      if (ninYearFilter) {
+        games = games.filter(function (g) { return ninFirstYear(g) === ninYearFilter; });
+      }
+    }
+
     sortGames(games);
 
     if (games.length === 0) {
@@ -1339,6 +1377,25 @@
    *  nintendo-ds 是 3DS 实机上的 DS 卡带（2026-10-23，时长为估算值）。 */
   var NINTENDO_PLATFORM_IDS = ['nintendo-switch', 'nintendo-switch2', 'nintendo-3ds', 'nintendo-ds'];
   function isNintendoPlatform(id) { return NINTENDO_PLATFORM_IDS.indexOf(id) >= 0; }
+
+  /**
+   * 任天堂列表的「首次游玩年份」（用户 2026-10-27 定，年份筛选用）。
+   * 主机子页签里优先取那台主机自己的 firstPlayedAt（一台游戏多机有的，各机各算）；
+   * 「全部主机」页签或条目没写时退游戏级 firstPlayedAt。没有首次游玩时间返回 ''（只落「全部」）。
+   */
+  function ninFirstYear(g) {
+    var t = null;
+    if (currentPlatform !== 'nintendo') {
+      var arr = (g && g.platforms) || [];
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i].platform === currentPlatform) { t = arr[i].firstPlayedAt || null; break; }
+      }
+    }
+    if (!t) t = (g && g.firstPlayedAt) || null;
+    if (!t) return '';
+    var d = new Date(t);
+    return isNaN(d.getTime()) ? '' : String(d.getFullYear());
+  }
 
   function platformDetail(platform) {
     if (isNintendoPlatform(platform)) return { hasAchievements: false, achStyle: 'none' };
