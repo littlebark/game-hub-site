@@ -1635,6 +1635,9 @@
         '<div class="meta-grid">' + metaHtml + '</div>' +
         (function () {
           // 简介优先长文 description，enrich/各平台补的通常是 shortDescription（PC/模拟器详情页 2026-10-22 修复）
+          // 任天堂不显示（2026-10-27 用户定：资料库补的繁体长文太占版面；数据里仍保留）
+          var isNin = ((game.platforms || [])).some(function (p) { return (p.platform || '').indexOf('nintendo') === 0; });
+          if (isNin) return '';
           var desc = game.description || game.shortDescription;
           return desc ? '<div class="a-desc" style="margin:10px 2px 0">' + esc(desc) + '</div>' : '';
         })() +
