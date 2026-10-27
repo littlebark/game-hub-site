@@ -232,6 +232,14 @@
           <div id="ns-cfw-msg" class="hint" style="margin-top:-4px">把破解机上 nx-activitylog 导出的 export.json 放进一个文件夹，指到这里。官方账号已有的游戏不导入（官方为准），总时长不足 1 小时的也不导入（多半是试玩）。</div>
 
           <div class="ra-actions">
+            <span class="hint" style="margin-top:0">3DS 活动记录：</span>
+            <input id="ns-3ds-path" class="db-input" type="text" style="flex:1;min-width:200px" placeholder="3ds_play_events.log 所在的文件或文件夹" spellcheck="false">
+            <button class="src-btn" id="ns-3ds-browse" type="button" style="display:none">浏览…</button>
+            <button class="src-btn" id="ns-3ds-btn" type="button">导入</button>
+          </div>
+          <div id="ns-3ds-msg" class="hint" style="margin-top:-4px">从 3DS 主机导出的活动记录（3ds_play_events.log）里读出 3DS 原生游戏的时长。官方账号里已经有的不导入（官方为准），总时长不足 10 分钟的也不导入（多半是误触）。以后日志更新了，重新导入一次就会按新日志重算。</div>
+
+          <div class="ra-actions">
             <button class="src-btn" id="ns-logout-btn" type="button">解除绑定</button>
             <span class="hint">删掉本机保存的登录凭证</span>
           </div>
@@ -1328,7 +1336,10 @@
       }).catch(function () { /* 弹不了就留在手输模式 */ });
       cfwBrowse.onclick = function () {
         cfwBrowse.disabled = true;
-        fetch('/api/pick-folder', { method: 'POST' })
+        fetch('/api/pick-folder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: '选择老 Switch 导出的文件夹（里面有 export.json）' }),
+        })
           .then(function (r) { return r.json(); })
           .then(function (j) {
             if (j && j.ok && j.path) cfwInput.value = j.path;
@@ -1364,6 +1375,69 @@
       if (!j || !j.ok) return;
       if (j.folder && !cfwInput.value) cfwInput.value = j.folder;
       if (j.imported) cfwSay('hint', '上次导入 ' + String(j.importedAt || '').slice(0, 10) + '，老 Switch 游戏现有 ' + j.titles + ' 款。重新导入同文件夹会按最新官方清单重新过滤。');
+    }).catch(function () {});
+
+    /* 3DS 活动记录导入（2026-10-28）：3ds_play_events.log → 并入任天堂数据。
+     * 过滤在服务端构建层：官方已有的跳过（官方为准），总时长 <10 分钟跳过。 */
+    var tdsInput = document.getElementById('ns-3ds-path');
+    var tdsBrowse = document.getElementById('ns-3ds-browse');
+    var tdsBtn = document.getElementById('ns-3ds-btn');
+    var tdsMsg = document.getElementById('ns-3ds-msg');
+    function tdsSay(kind, txt) {
+      if (!tdsMsg) return;
+      tdsMsg.className = 'hint';
+      if (kind === 'ok') tdsMsg.innerHTML = '<span style="color:#2e7d32">✓ ' + txt + '</span>';
+      else if (kind === 'err') tdsMsg.innerHTML = '<span style="color:#c62828">✗ ' + txt + '</span>';
+      else tdsMsg.textContent = txt;
+    }
+    if (tdsBrowse) {
+      fetch('/api/pick-folder/available').then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok) tdsBrowse.style.display = '';
+      }).catch(function () { /* 弹不了就留在手输模式 */ });
+      tdsBrowse.onclick = function () {
+        tdsBrowse.disabled = true;
+        fetch('/api/pick-folder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: '选择 3ds_play_events.log 所在的文件夹' }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.ok && j.path) tdsInput.value = j.path;
+            else if (j && j.error) tdsSay('err', j.error);
+          })
+          .catch(function () {})
+          .then(function () { tdsBrowse.disabled = false; });
+      };
+    }
+    if (tdsBtn) tdsBtn.onclick = async function () {
+      tdsBtn.disabled = true;
+      var p = (tdsInput.value || '').trim();
+      if (!p) {
+        tdsSay('err', '先填路径：3ds_play_events.log 这个文件，或者它所在的文件夹');
+        tdsBtn.disabled = false;
+        return;
+      }
+      tdsSay('hint', '正在读活动记录并合并…（几秒钟）');
+      try {
+        var r = await (await fetch('/api/nintendo/3ds/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: p }),
+        })).json();
+        if (!r.ok) throw new Error(r.error || '导入失败');
+        var t = r.total || {};
+        tdsSay('ok', '导入完成：日志里读出 <b>' + (t.titles || 0) + '</b> 款 3DS 游戏' +
+          '（其中 <b>' + (t.named || 0) + '</b> 款查到了名字' + ((t.unnamed || 0) ? '，' + t.unnamed + ' 款对照表里没有、暂时用编号当名字' : '') + '）；' +
+          '官方已有跳过 <b>' + r.skipped.official + '</b> 款、不足 10 分钟跳过 <b>' + r.skipped.short +
+          '</b> 款、查不到名字跳过 <b>' + (r.skipped.unknown || 0) +
+          '</b> 款、实际进库 <b>' + r.added + '</b> 款。刷新页面到 Nintendo 页签即可看到（总日历里也有它的按天记录）。');
+      } catch (e) { tdsSay('err', e.message); }
+      tdsBtn.disabled = false;
+    };
+    fetch('/api/nintendo/3ds/status').then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) return;
+      if (j.path && !tdsInput.value) tdsInput.value = j.path;
+      if (j.imported) tdsSay('hint', '上次导入 ' + String(j.importedAt || '').slice(0, 10) + '，日志里共 ' + j.titles +
+        ' 款 3DS 游戏（' + j.named + ' 款有名字），现在算进任天堂数据的是 ' + j.entered + ' 款。日志更新后重新导入会按新日志重算。');
     }).catch(function () {});
 
     /* 补封面（SteamGridDB）：后台跑，轮询进度（三闸门：在跑才启动、终态即停、次数硬上限） */
@@ -1716,7 +1790,7 @@
     };
 
     /* ---------- 「浏览…」：弹 Windows 原生选文件夹窗口（本地程序能力，2026-10-25） ---------- */
-    function setupBrowse(btnId, inputId) {
+    function setupBrowse(btnId, inputId, title) {
       var browseBtn = document.getElementById(btnId);
       fetch('/api/pick-folder/available').then(function (r) { return r.json(); }).then(function (j) {
         if (j && j.ok) browseBtn.style.display = '';
@@ -1725,7 +1799,10 @@
         var btn = this;
         btn.disabled = true;
         say('请在弹出的窗口里选择文件夹…（选完自动填入）');
-        fetch('/api/pick-folder', { method: 'POST' })
+        fetch('/api/pick-folder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title || '请选择文件夹' }),
+        })
           .then(function (r) { return r.json(); })
           .then(function (j) {
             if (!j || !j.ok) throw new Error((j && j.error) || '打开选择窗口失败');
@@ -1738,8 +1815,8 @@
           .then(function () { btn.disabled = false; });
       };
     }
-    setupBrowse('pn-ach-browse', 'pn-ach-folder');
-    setupBrowse('pn-rpcs3-browse', 'pn-rpcs3-folder');
+    setupBrowse('pn-ach-browse', 'pn-ach-folder', '选择成就数据所在的文件夹（AchievementWatcher 导出目录）');
+    setupBrowse('pn-rpcs3-browse', 'pn-rpcs3-folder', '选择 RPCS3 的根目录（里面有 dev_hdd0）');
 
     /* ---------- 管理列表 ---------- */
     var manageEl = document.getElementById('pn-manage');
