@@ -1429,7 +1429,9 @@
           '（其中 <b>' + (t.named || 0) + '</b> 款查到了名字' + ((t.unnamed || 0) ? '，' + t.unnamed + ' 款对照表里没有、暂时用编号当名字' : '') + '）；' +
           '官方已有跳过 <b>' + r.skipped.official + '</b> 款、不足 10 分钟跳过 <b>' + r.skipped.short +
           '</b> 款、查不到名字跳过 <b>' + (r.skipped.unknown || 0) +
-          '</b> 款、实际进库 <b>' + r.added + '</b> 款。刷新页面到 Nintendo 页签即可看到（总日历里也有它的按天记录）。');
+          '</b> 款、实际进库 <b>' + r.added + '</b> 款' +
+          ((r.dayPatched || 0) ? '，另给官方已有的 <b>' + r.dayPatched + '</b> 款补上了按天日历（任天堂不提供 3DS 的按天记录，这个日历来自活动日志，所以天数之和与显示的总时长不一定相等）' : '') +
+          '。刷新页面到 Nintendo 页签即可看到（总日历里也有它的按天记录）。');
       } catch (e) { tdsSay('err', e.message); }
       tdsBtn.disabled = false;
     };
