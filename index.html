@@ -508,8 +508,8 @@
 
   <script>
   /* ==================== Xbox 连接面板 ====================
-   * 与 Steam 的关键区别：Xbox 的玩家代号/成就进度是**公开数据**，
-   * 所以日常只需要填 gamertag；Key 是本程序的凭证，填一次存本机。
+   * 2026-11-01 重构：Xbox 不再走 OpenXBL（api.xbl.io）网关，改为直连微软官方接口 +
+   * 本机微软 OAuth 登录（XSTS 令牌）。不再需要任何 xbl.io Key，也不受 Cloudflare 墙影响。
    */
   (function () {
     var panel = document.getElementById('xbox-panel');
@@ -595,30 +595,45 @@
       renderPlaytime();
     }
 
+    var lastStatus = { loggedIn: false };
+
+    /* 触发微软 OAuth 登录：打开浏览器授权页，并轮询主面板登录状态直到成功 */
+    async function startLogin() {
+      try {
+        var r = await (await fetch('/api/xbox/oauth/start', { method: 'POST' })).json();
+        if (r && r.authUrl) window.open(r.authUrl, '_blank');
+      } catch (e) { /* 打开失败不阻塞，下面轮询会提示 */ }
+      renderPlaytime();                       // 下方「官方游玩时长」会进入 waiting 轮询
+      var tries = 0;
+      var iv = setInterval(async function () {
+        tries++;
+        var s;
+        try { s = await (await fetch('/api/xbox/status')).json(); } catch (e) { s = { loggedIn: false }; }
+        render(s);
+        if (s.loggedIn || tries > 20) clearInterval(iv);
+      }, 3000);
+    }
+
     function render(cfg) {
-      statusEl.textContent = cfg.hasKey
-        ? ('已保存 Key' + (cfg.lastGamertag ? '（玩家代号 ' + cfg.lastGamertag + '）' : ''))
-        : '尚未保存 Key';
-      if (cfg.hasKey) {
+      lastStatus = cfg || lastStatus;
+      if (cfg.loggedIn) {
+        statusEl.textContent = '已登录微软账号' + (cfg.gamertag ? '（' + cfg.gamertag + '）' : (cfg.xuid ? '（' + cfg.xuid + '）' : ''));
         panel.innerHTML =
-          '<p class="ok">已配置 Xbox Key（仅存于本机）。</p>' +
-          '<label>你的玩家代号（gamertag，可换人查）</label>' +
-          '<input id="xb-gt" type="text" placeholder="如 Major Nelson" autocomplete="off">' +
+          '<p class="ok">已登录微软账号，可以直接拉取。</p>' +
           '<button class="src-btn active" id="xb-pull">拉取我的 Xbox 数据</button>' +
-          '<div class="hint">Xbox 公开接口提供：玩家分数、最近玩过、成就进度；' +
-          '<b>不提供游戏总时长</b>（平台限制，记为 0）。成就明细在你打开某款游戏时按需获取。</div>' +
+          '<div class="hint">拉取后：玩家分数、最近玩过、成就进度会进来；' +
+          '<b>游戏总时长</b> 在第一次拉取时会顺带从微软官方补齐（之后自动更新）。' +
+          '成就明细在你打开某款游戏详情时按需获取并缓存到本地。</div>' +
           '<div id="xb-result" class="result"></div>';
         document.getElementById('xb-pull').onclick = pull;
       } else {
+        statusEl.textContent = '尚未登录微软账号';
         panel.innerHTML =
-          '<p>Xbox 走 OpenXBL（xbl.io）网关。Key 在 xbl.io 用微软账号登录后即可免费获取（免费档 150 次/小时）。</p>' +
-          '<label>Xbox Key（只需填一次）</label><input id="xb-key" type="text" placeholder="粘贴 xbl.io 的 Key" autocomplete="off">' +
-          '<label>你的玩家代号（gamertag）</label>' +
-          '<input id="xb-gt" type="text" placeholder="如 Major Nelson，或粘贴个人资料网址" autocomplete="off">' +
-          '<div class="hint">填了 Key 之后，以后只改玩家代号就能换账号拉取，Key 不用再填。</div>' +
-          '<button class="src-btn active" id="xb-save">保存并拉取</button>' +
+          '<p>使用 Xbox 需要先登录你的微软账号（只需登录一次，之后自动续期，凭证只存在本机，不下发浏览器）。</p>' +
+          '<button class="src-btn active" id="xb-login">登录微软账号（打开浏览器）</button>' +
+          '<div class="hint">登录成功后会自动回调；回来点「拉取我的 Xbox 数据」即可，<b>不再需要任何 xbl.io Key</b>。</div>' +
           '<div id="xb-result" class="result"></div>';
-        document.getElementById('xb-save').onclick = saveAndPull;
+        document.getElementById('xb-login').onclick = startLogin;
       }
     }
 
@@ -655,16 +670,14 @@
       }
     }
 
-    async function saveAndPull() {
-      var key = document.getElementById('xb-key').value.trim();
-      var gt = document.getElementById('xb-gt').value.trim();
-      if (!key) { alert('请先粘贴 Xbox Key'); return; }
-      if (!gt) { alert('请填写你的玩家代号（gamertag）'); return; }
-      await fetch('/api/xbox/savekey', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key, gamertag: gt }) });
-      render({ hasKey: true });
-    }
+    /* saveAndPull 已废弃：Xbox 已切到微软官方 OAuth，不再需要 xbl.io Key（存档兼容由 /api/xbox/savekey 空操作处理） */
 
     async function pull() {
+      if (!lastStatus.loggedIn) {
+        alert('请先点「登录微软账号」完成授权，再拉取。');
+        startLogin();
+        return;
+      }
       var r = document.getElementById('xb-result');
       if (r) r.innerHTML = '拉取中…（会顺带更新官方游玩时长，第一次稍慢，别关页面）';
       var gtEl = document.getElementById('xb-gt');
