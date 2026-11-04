@@ -35,6 +35,82 @@
   /** 顶部游戏库页签里显示的顺序（用户 2026-10-20 定：Nintendo / Xbox / Steam / Retro / Epic / 手机） */
   var SOURCE_ORDER = ['nintendo', 'xbox', 'steam', 'retro', 'epic', 'phone', 'pc', 'emu'];
 
+  /* ==================== 自定义标记（全平台，2026-11-04） ====================
+   * 用户手改的标记独立存 data/custom/overrides.json，
+   * 前端从 data_custom.js 读 window.GAME_DATA_CUSTOM.games，主键 = <platform>:<externalId>。
+   * 初始化时把标记注入到每个游戏 platforms[].extra —— 列表 / 详情 / 统计共用同一份内存对象，
+   * 不用改任何 importer，重新拉数据后刷新页面会自动重新注入，手改不会被冲掉。
+   * 以后要加新状态，只改 CUSTOM_STATUS 这张表：后端只做格式校验，不认具体值。
+   * 「已通关」不另做样式：isBeatenAward() 认 customStatus === 'finished'，
+   * 直接复用 Retro 页签那套绿框 + 成就条右侧绿勾（与 RA 官方 beaten 同款）。
+   * 线上只读版（GH_STATIC）仍显示标记，但隐藏编辑按钮。
+   */
+  var CUSTOM_STATUS = [
+    { key: 'finished', label: '已通关', color: '#1d9e75' }
+  ];
+  var CUSTOM_MARKS = {};
+
+  function customKeyOf(p) {
+    return String((p && p.platform) || 'unknown') + ':' + String((p && p.externalId) || '');
+  }
+  function customKeys(game) {
+    return (game.platforms || []).map(function (p) { return customKeyOf(p); });
+  }
+  /** 写入用的主键：已有标记的优先沿用旧键，否则用第一个平台 */
+  function customWriteKey(game) {
+    var ps = game.platforms || [];
+    for (var i = 0; i < ps.length; i++) {
+      if (CUSTOM_MARKS[customKeyOf(ps[i])]) return customKeyOf(ps[i]);
+    }
+    return ps.length ? customKeyOf(ps[0]) : '';
+  }
+  function customMarkOf(game) {
+    var ks = customKeys(game);
+    for (var i = 0; i < ks.length; i++) {
+      if (CUSTOM_MARKS[ks[i]]) return CUSTOM_MARKS[ks[i]];
+    }
+    return null;
+  }
+  function customStatusDef(key) {
+    for (var i = 0; i < CUSTOM_STATUS.length; i++) {
+      if (CUSTOM_STATUS[i].key === key) return CUSTOM_STATUS[i];
+    }
+    return null;
+  }
+  /** 原地写入内存对象（引用不变）；重复调用安全，旧字段会先清掉 */
+  function applyCustomMarks() {
+    CUSTOM_MARKS = (window.GAME_DATA_CUSTOM && window.GAME_DATA_CUSTOM.games) || {};
+    SOURCE_ORDER.forEach(function (s) {
+      var d = window[SOURCES[s].varName];
+      if (!d || !d.games) return;
+      d.games.forEach(function (g) {
+        var m = customMarkOf(g);
+        (g.platforms || []).forEach(function (p) {
+          if (!p.extra) p.extra = {};
+          delete p.extra.customStatus;
+          delete p.extra.customStatusLabel;
+          delete p.extra.customColor;
+          delete p.extra.customNote;
+          delete p.extra.customTags;
+          if (!m) return;
+          var def = customStatusDef(m.status);
+          if (m.status) {
+            p.extra.customStatus = m.status;
+            p.extra.customStatusLabel = def ? def.label : m.status;
+            p.extra.customColor = def ? def.color : '#888780';
+          }
+          if (m.note) p.extra.customNote = m.note;
+          if (m.tags && m.tags.length) p.extra.customTags = m.tags;
+        });
+      });
+    });
+  }
+  /** 标记改完后：所有源的过滤缓存都可能失效（数据是原地改的，引用没变） */
+  function invalidateAllSources() {
+    _srcFilterCache = {};
+    refreshData();
+  }
+
   function emptyData() { return { schemaVersion: 1, platforms: [], ownerId: null, games: [] }; }
 
   /**
@@ -430,6 +506,7 @@
   var currentPlatform = 'all';
   var currentSort = 'lastPlayed';   // lastPlayed | playtime | achievements | title
   var ninYearFilter = '';           // 任天堂列表「按首次游玩年份」筛选（'' = 全部）
+  var beatenFilter = '';            // '' = 全部游戏 | 'beaten' = 只看通关
 
   /** 封面 HTML：有图用图（图挂了露出首字母色块），没图用首字母色块 */
   /**
@@ -445,12 +522,26 @@
     return false;
   }
 
-  /** RA 已通关徽章（beaten）：extra.awardState === 'beaten'。
+  /** 已通关徽章：RA 官方 extra.awardState === 'beaten'，或用户手打的自定义标记 finished。
+   * 两者共用 Retro 页签那套绿框 + 成就条右侧绿勾，已通关不再单独挂文字角标。
    * mastered（已精通）不走这里 —— 它有满成就金框，金框优先。 */
   function isBeatenAward(game) {
     var ps = game.platforms || [];
     for (var i = 0; i < ps.length; i++) {
-      if ((ps[i].extra || {}).awardState === 'beaten') return true;
+      var ex = ps[i].extra || {};
+      if (ex.awardState === 'beaten' || ex.customStatus === 'finished') return true;
+    }
+    return false;
+  }
+
+  // 「通关」筛选用：除视觉上的绿框/绿勾口径（beaten / finished）外，
+  // 也把 RA 精通 mastered 算进来，与统计页 :796-798 的「通关 = beaten + mastered」对齐。
+  // 视觉仍由 isBeatenAward() 决定 —— mastered 是满成就金框，优先级最高，不显示绿勾。
+  function isClearedGame(game) {
+    var ps = game.platforms || [];
+    for (var i = 0; i < ps.length; i++) {
+      var ex = ps[i].extra || {};
+      if (ex.awardState === 'beaten' || ex.awardState === 'mastered' || ex.customStatus === 'finished') return true;
     }
     return false;
   }
@@ -461,13 +552,20 @@
     var beaten = !full && isBeatenAward(game);
     // 手机图标是 144×144 的透明 PNG（圆角已烘在图里）→ 底色用白，别让随机色块从圆角漏出来
     var isPh = !!phoneEntry(game);
-    // 框：满成就金框 > RA 已通关绿框 > 无框；星星/勾都不放封面上（放成就进度条右边）
+    // 框：满成就金框 > 已通关绿框 > 无框；星星/勾都不放封面上（放成就进度条右边）
     var coverTitle = full ? ' title="成就已全收集（100%）"'
-      : (beaten ? ' title="RA 已通关"' : '');
+      : (beaten ? ' title="已通关"' : '');
+    // 自定义标记角标：已通关走绿框/绿勾，不重复挂文字条；以后新增的其它状态才用角标
+    var cm = customMarkOf(game);
+    var cmBadge = (cm && cm.status && cm.status !== 'finished')
+      ? '<i class="cm-badge" style="background:' + esc((customStatusDef(cm.status) || {}).color || '#888780') + '">'
+        + esc((customStatusDef(cm.status) || {}).label || cm.status) + '</i>'
+      : '';
     return '<div class="cover' + (big ? ' big' : '') + (full ? ' full' : '') + (beaten ? ' beaten' : '') + (isPh ? ' ph' : '') +
       '" style="background:' + (isPh ? '#fff' : color) + '"' + coverTitle + '>' +
       '<span>' + esc(firstChar(game.title)) + '</span>' +
       (game.cover ? '<img src="' + esc(game.cover) + '" alt="" onerror="this.remove()">' : '') +
+      cmBadge +
       '</div>';
   }
 
@@ -512,13 +610,15 @@
     // 任天堂全平台没有成就系统：那一栏不显示「成就 0/0」，改显示游玩天数（用户 2026-10-19 定）
     // 手机同理，但手机更有意义的是一天平均多久 → 显示「有记录 N 天 / 日均 X 分钟」
     var isPhoneEntry = game.platforms.some(function (p) { return p.platform === 'phone'; });
+    var fullAch = isFullAchievement(game);   // 满成就（金框/金星）优先级最高，压过通关绿勾
     var achBlock;
     if (isPhoneEntry && !gameHasAchievements(game)) {
       var pex = (game.platforms[0] || {}).extra || {};
       achBlock = '<div class="ach-block no-ach">' +
         '<div class="ach-top"><span>有记录 <b>' + (pex.totalPlayedDays || 0) + '</b> 天</span>' +
         '<span class="na-tag">日均 ' + (pex.avgMinutes || 0) + ' 分钟</span></div>' +
-        '<div class="ach-bar-row"><div class="ach-bar na" title="手机只记录使用时长，没有成就系统"></div></div>' +
+        '<div class="ach-bar-row"><div class="ach-bar na" title="手机只记录使用时长，没有成就系统"></div>' +
+          (!fullAch && isBeatenAward(game) ? '<i class="ach-beaten" title="已通关">✓</i>' : '') + '</div>' +
         '<div class="ach-icons"></div></div>';
     } else if (!gameHasAchievements(game)) {
       // PC / 模拟器没有成就数据：那一栏改显示更有意义的数字（PC=启动次数，模拟器=来源）
@@ -542,15 +642,16 @@
       achBlock = '<div class="ach-block no-ach">' +
         '<div class="ach-top"><span>' + topSpan + '</span>' +
         '<span class="na-tag">' + esc(tagTxt) + '</span></div>' +
-        '<div class="ach-bar-row"><div class="ach-bar na" title="' + tipTxt + '"></div></div>' +
+        '<div class="ach-bar-row"><div class="ach-bar na" title="' + tipTxt + '"></div>' +
+          (!fullAch && isBeatenAward(game) ? '<i class="ach-beaten" title="已通关">✓</i>' : '') + '</div>' +
         '<div class="ach-icons"></div></div>';
     } else {
       achBlock = '<div class="ach-block">' +
         '<div class="ach-top"><span>成就 ' + achText + '</span><span>' + pct + '%</span></div>' +
         '<div class="ach-bar-row">' +
           '<div class="ach-bar"><i style="width:' + pct + '%"></i></div>' +
-          (isFullAchievement(game) ? '<i class="ach-star" title="成就已全收集（100%）">★</i>' : '') +
-          (isBeatenAward(game) ? '<i class="ach-beaten" title="RA 已通关">✓</i>' : '') +
+          (fullAch ? '<i class="ach-star" title="成就已全收集（100%）">★</i>' : '') +
+          (!fullAch && isBeatenAward(game) ? '<i class="ach-beaten" title="已通关">✓</i>' : '') +
         '</div>' +
         '<div class="ach-icons">' + icons + '</div>' +
         '</div>';
@@ -585,6 +686,7 @@
     if (!el) return;
     var best = null, bestLast = '';
     // 跟着页签走：手机页签横幅从手机应用里挑，其余页签不含手机应用
+    // 「通关」筛选只作用于下方游戏列表，横幅仍取全池最近游玩（有意设计，不随筛选变）
     var pool = displayPool();
     // 手机页签优先展示「游戏」，没有合适的再退回应用（用户 2026-10-20 定）——
     // 微信、B站这类每天都有使用记录，不优先的话横幅永远是应用
@@ -611,7 +713,7 @@
     el.innerHTML =
       '<div class="hero-inner">' +
         '<div class="hero-cover' + (full ? ' full' : '') + (heroBeaten ? ' beaten' : '') + '" style="background:' + coverColor(best.title) + '"' +
-          (full ? ' title="成就已全收集（100%）"' : (heroBeaten ? ' title="RA 已通关"' : '')) + '>' + coverInner + '</div>' +
+          (full ? ' title="成就已全收集（100%）"' : (heroBeaten ? ' title="已通关"' : '')) + '>' + coverInner + '</div>' +
         '<div>' +
           '<div class="hero-label">最近游玩</div>' +
           '<div class="hero-title">' + esc(best.title) + '</div>' +
@@ -689,9 +791,11 @@
         achT += p.achievements.total || 0;
         minutes += p.totalMinutes || 0;
         if (p.totalMinutes > 0) timed += 1;
-        var st = (p.extra || {}).awardState;
-        if (st === 'beaten') beaten += 1;
+        var ex = p.extra || {};
+        var st = ex.awardState;
+        // 通关数也认手打的「已通关」标记（与 isBeatenAward 同口径）；mastered 优先，不重复计数
         if (st === 'mastered') mastered += 1;
+        else if (st === 'beaten' || ex.customStatus === 'finished') beaten += 1;
         hosts[p.platform] = (hosts[p.platform] || 0) + 1;
       });
     });
@@ -714,7 +818,7 @@
         stat('成就', achU + '<small>/' + achT + '</small>', '已解锁 / 总成就数') +
         (meta.points ? stat('点数', meta.points + '<small>点</small>', meta.trueRatio ? ('TrueRatio ' + meta.trueRatio) : '') : '') +
         // 通关数 = beaten + mastered（精通的游戏也一定通关了），精通数单独小字标注
-        stat('通关', (beaten + mastered) + (mastered ? '<small>含精通 ' + mastered + '</small>' : ''), 'RA 判定为 beaten / mastered 的游戏数') +
+        stat('通关', (beaten + mastered) + (mastered ? '<small>含精通 ' + mastered + '</small>' : ''), 'RA 判定为 beaten / mastered，或手动标记已通关的游戏数') +
         stat('主机', hostRows.length, '覆盖的老主机 / 掌机数量') +
         (meta.averageCompletion ? stat('平均完成度', esc(meta.averageCompletion), 'RA 官方口径') : '') +
         (timed ? stat('已记录时长', formatMinutes(minutes), timed + ' 款游戏有 RA 记录的游玩时长') : '') +
@@ -1185,14 +1289,24 @@
           '<option value="playtime">总时长</option>' +
           '<option value="achievements">成就进度</option>' +
           '<option value="title">游戏名称</option>' +
+        '</select>' +
+        '<span class="sort-label">筛选</span>' +
+        '<select id="beaten-filter">' +
+          '<option value="">全部游戏</option>' +
+          '<option value="beaten">通关</option>' +
         '</select>';
       listEl.appendChild(sortBar);
       sortBar.querySelector('#sort-select').addEventListener('change', function (e) {
         currentSort = e.target.value;
         renderLibrary();
       });
+      sortBar.querySelector('#beaten-filter').addEventListener('change', function (e) {
+        beatenFilter = e.target.value;
+        renderLibrary();
+      });
     }
     sortBar.querySelector('#sort-select').value = currentSort;
+    sortBar.querySelector('#beaten-filter').value = beatenFilter;
 
     // 任天堂列表专属：「按首次游玩年份」筛选（用户 2026-10-27 定，默认全部，用 firstPlayedAt 匹配）
     var isNinGroup = currentPlatform === 'nintendo' || isNintendoPlatform(currentPlatform);
@@ -1217,6 +1331,9 @@
     if (currentPlatform !== 'all') {
       games = games.filter(function (g) { return matchesPlatform(g, currentPlatform); });
     }
+    if (beatenFilter === 'beaten') {
+      games = games.filter(function (g) { return isClearedGame(g); });
+    }
 
     // 年份筛选：候选年份从「当前页签里的游戏」的首次游玩时间取，倒序排（新的在前）
     if (isNinGroup) {
@@ -1239,7 +1356,10 @@
     sortGames(games);
 
     if (games.length === 0) {
-      listEl.innerHTML = '<div class="placeholder"><div class="big">[ ]</div><h2>该平台暂无游戏</h2></div>';
+      var barEmpty = listEl.querySelector('.sort-bar');
+      listEl.innerHTML = '<div class="placeholder"><div class="big">[ ]</div><h2>' +
+        (beatenFilter === 'beaten' ? '没有标记通关的游戏' : '该平台暂无游戏') + '</h2></div>';
+      if (barEmpty) listEl.insertBefore(barEmpty, listEl.firstChild);
       appendPhoneHiddenBar(listEl);
       return;
     }
@@ -1288,6 +1408,68 @@
         '<span class="ph-toggle-tip">' +
           (hidden ? '当前已隐藏，统计里也不计入' : '隐藏后，列表和统计都不再算它') +
         '</span></div>';
+  }
+
+  /* ==================== 自定义标记：详情页编辑区 ====================
+   * 闭环照抄手机隐藏开关：先 POST 落盘成功 → 再改内存对象做即时反馈 → 失败只提示、不污染内存。
+   * 刷新页面后由 applyCustomMarks() 从 data_custom.js 重建，所以这里不用做持久化细节。 */
+  function customMarkHtml(game) {
+    var m = customMarkOf(game) || {};
+    var cur = m.status || '';
+    var ro = !!window.GH_STATIC;
+    var opts = [{ key: '', label: '未标记', color: '' }].concat(CUSTOM_STATUS);
+    // 线上只读版：只留一行状态文字，不渲染任何可点按钮（避免误以为能改）
+    if (ro) {
+      if (!cur) return '';
+      var def = customStatusDef(cur);
+      return '<div class="section-title">我的标记（线上只读）</div>' +
+        '<div class="cm-box"><div class="cm-status-ro">状态：' +
+        esc(def ? def.label : cur) + '</div></div>';
+    }
+    var seg = opts.map(function (o) {
+      return '<button type="button" class="cm-btn' + (cur === o.key ? ' active' : '') +
+        '" data-cm-status="' + esc(o.key) + '"' + (o.color ? ' style="--cm-color:' + o.color + '"' : '') +
+        '>' + esc(o.label) + '</button>';
+    }).join('');
+    return '<div class="section-title">我的标记</div>' +
+      '<div class="cm-box">' +
+        '<div class="cm-seg">' + seg + '</div>' +
+        '<div class="cm-tip">标记存本机独立文件，重新拉数据 / 重建页签都不会冲掉。标记「已通关」后，封面和成就条按 Retro 页签的通关样式显示。</div>' +
+        '<div class="cm-msg" id="cm-msg"></div>' +
+      '</div>';
+  }
+
+  /** 点状态按钮：null/空 = 清除该状态；成功后原地改内存 + 重绘 */
+  function setCustomMark(game, status, mask) {
+    if (window.GH_STATIC) return;
+    var key = customWriteKey(game);
+    if (!key) { window.alert('这款游戏没有稳定标识，暂时不能打标记'); return; }
+    var msg = mask ? mask.querySelector('#cm-msg') : null;
+    var btns = mask ? mask.querySelectorAll('.cm-btn') : [];
+    [].forEach.call(btns, function (b) { b.disabled = true; });
+    if (msg) { msg.className = 'cm-msg'; msg.textContent = '正在保存…'; }
+    fetch('/api/custom/mark', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, patch: { status: status || null } })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || '保存失败');
+      // 落盘成功才动内存
+      if (status) CUSTOM_MARKS[key] = Object.assign({}, CUSTOM_MARKS[key] || {}, { status: status });
+      else if (CUSTOM_MARKS[key]) { delete CUSTOM_MARKS[key].status; if (!Object.keys(CUSTOM_MARKS[key]).length) delete CUSTOM_MARKS[key]; }
+      applyCustomMarks();
+      invalidateAllSources();
+      renderLibrary();
+      [].forEach.call(btns, function (b) {
+        b.disabled = false;
+        b.classList.toggle('active', b.getAttribute('data-cm-status') === (status || ''));
+      });
+      if (msg) { msg.className = 'cm-msg ok'; msg.textContent = status ? '已标记' : '已清除'; }
+    }).catch(function (e) {
+      [].forEach.call(btns, function (b) { b.disabled = false; });
+      if (msg) { msg.className = 'cm-msg err'; msg.textContent = '保存失败：' + e.message; }
+      window.alert('保存失败：' + e.message);
+    });
   }
 
   /** 手改分类：存 overrides → 就地更新弹层按钮和分类格 → 重绘背后列表 */
@@ -1642,6 +1824,7 @@
           return desc ? '<div class="a-desc" style="margin:10px 2px 0">' + esc(desc) + '</div>' : '';
         })() +
         phoneToggleHtml(game) +
+        customMarkHtml(game) +
         (function () {
           // 实机存档实拍（DS 卡带特例，2026-10-24）：数据自带 extra.proofImages 才显示
           var imgs = [];
@@ -1672,6 +1855,9 @@
     if (phBtn) phBtn.addEventListener('click', function () { togglePhoneVisible(game, mask); });
     [].forEach.call(mask.querySelectorAll('.ph-cat-btn'), function (b) {
       b.addEventListener('click', function () { setPhoneCategory(game, b.getAttribute('data-ph-cat'), mask); });
+    });
+    [].forEach.call(mask.querySelectorAll('.cm-btn'), function (b) {
+      b.addEventListener('click', function () { setCustomMark(game, b.getAttribute('data-cm-status'), mask); });
     });
     document.addEventListener('keydown', onKey);
     window.__closeModal = close;
@@ -3520,6 +3706,8 @@
   }
 
   function init() {
+    // 自定义标记：必须在任何渲染之前注入，列表 / 详情 / 统计才都能看到
+    applyCustomMarks();
     // 线上只读版：发布脚本把 GH_STATIC 改成 true，隐藏一切会写数据的功能
     if (window.GH_STATIC) document.body.classList.add('gh-static');
     if (!window.GH_STATIC) initAssetSyncPanel();

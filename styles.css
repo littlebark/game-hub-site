@@ -2740,6 +2740,62 @@ select.year-select {
 .ph-cat-btn.active[data-ph-cat="应用"] { background: #2f7cf6; box-shadow: 0 1px 5px rgba(47, 124, 246, .35); }
 .ph-cat-btn.active::before { background: #fff; }
 
+/* ==================== 自定义标记（全平台，2026-11-04） ==================== */
+/* 封面角标：自己打的标记，和 RA 官方通关绿框 / 满成就金框互不干扰 */
+.cover { position: relative; }
+.cm-badge {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 3px 2px; font-size: 10px; line-height: 1.2; font-style: normal;
+  text-align: center; color: #fff; letter-spacing: .5px;
+  background: #888780; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
+.cover.big .cm-badge { font-size: 12px; padding: 4px 3px; }
+
+.cm-box {
+  margin: 8px 2px 4px; padding: 12px 14px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+}
+.cm-seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.cm-btn {
+  padding: 6px 14px; font-size: 13px; cursor: pointer;
+  background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 999px;
+  transition: all .15s;
+}
+.cm-btn:hover:not(:disabled) { color: var(--text-0); border-color: var(--accent); }
+.cm-btn.active { color: #fff; background: var(--cm-color, var(--accent)); border-color: var(--cm-color, var(--accent)); }
+.cm-btn:disabled { opacity: .55; cursor: default; }
+.cm-tip { font-size: 12px; color: var(--text-2); margin: 8px 0 0; line-height: 1.6; }
+.cm-status-ro { font-size: 13px; color: var(--text-2); margin-top: 8px; }
+.cm-msg { font-size: 12px; color: var(--text-2); margin-top: 8px; min-height: 0; }
+.cm-msg:empty { display: none; }
+.cm-msg.ok { color: #1d9e75; }
+.cm-msg.err { color: #e24b4a; }
+
+/* 历史档案管理（导入页 PC 面板）：只在这里能移除，游戏列表里历史条目与正常条目完全一样 */
+.arc-list { margin-top: 10px; max-height: 340px; overflow: auto; }
+.arc-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 7px 4px; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.arc-row:last-child { border-bottom: 0; }
+.arc-name { flex: 1; min-width: 160px; color: var(--text-0); }
+.arc-meta { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.arc-tag {
+  padding: 1px 8px; font-size: 11px; border-radius: 999px;
+  background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border);
+}
+.arc-tag.current { color: #1d9e75; border-color: #1d9e75; }
+.arc-del {
+  padding: 3px 10px; font-size: 12px; cursor: pointer;
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.arc-del:hover { color: #e24b4a; border-color: #e24b4a; }
+.arc-empty { font-size: 13px; color: var(--text-2); padding: 8px 2px; }
+
 /* ==================== 线上只读版（GH_STATIC） ====================
  * 发布脚本把 index.html 里 window.GH_STATIC 改成 true 后，
  * app.js 会给 body 加 .gh-static，隐藏一切会写数据的功能，只留浏览。 */

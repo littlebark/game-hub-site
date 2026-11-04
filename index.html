@@ -317,6 +317,16 @@
             <div class="ra-step muted">自动归属只是预填：下拉框改成 PC / 模拟器 / Steam / Xbox / Epic / 隐藏 即覆盖；「捞回」= include，被门槛滤掉的也会显示；备注只给自己看。改完自动重建两个页签。</div>
             <div id="pn-manage" class="pn-manage"><div class="hint">尚未加载，展开后自动读取。</div></div>
           </details>
+
+          <details class="ra-fallback" id="arc-manage-wrap">
+            <summary>历史档案：已经删掉的游戏，记录还留着</summary>
+            <div class="ra-step muted">每次重建 PC 页签都会把见过的游戏记进本机档案。以后从 Playnite 里删掉的游戏，<b>列表里照常显示、不做任何特殊标记</b>；这里只是后台清单，方便你确认或手动清掉误收的条目。档案只增不减，只有在这里点「移除」才会删。</div>
+            <div class="ra-actions">
+              <button class="src-btn" id="arc-refresh" type="button">刷新清单</button>
+              <span id="arc-msg" class="hint"></span>
+            </div>
+            <div id="arc-list" class="arc-list"><div class="arc-empty">展开后自动读取…</div></div>
+          </details>
         </div>
 
         <!-- 统一库：跨平台资料汇总（本地）+ 联网补缺封面与中文名 -->
@@ -395,6 +405,8 @@
        点导入页「重建」按钮后由本地程序生成；文件不存在时服务器返回空桩，页面正常显示引导 -->
   <script src="data_emu.js"></script>
   <script src="data_pc.js"></script>
+  <!-- 自定义标记（通关 / 弃坑 …）：只存手改，重新拉数据不会冲掉；线上只读版照样能看 -->
+  <script src="data_custom.js"></script>
   <!-- platform_fields.js = 各平台特有字段登记表（新增平台时填这里） -->
   <script src="platform_fields.js"></script>
   <script src="app.js"></script>
@@ -1915,6 +1927,61 @@
     manageWrap.addEventListener('toggle', function () {
       if (manageWrap.open) { loadManage(); manageLoaded = true; }
     });
+
+    /* ---- 历史档案后台清单（2026-11-04）----
+     * 游戏列表里历史条目与正常条目完全一样，这里只做「确认 / 手动清掉误收」。
+     * 移除是唯一会删档案的操作，必须用户点确认；删完自动重建 PC 页签。 */
+    var arcWrap = document.getElementById('arc-manage-wrap');
+    var arcList = document.getElementById('arc-list');
+    var arcMsg = document.getElementById('arc-msg');
+    var arcRefresh = document.getElementById('arc-refresh');
+    if (arcWrap && arcList) {
+      function escHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function arcSay(t) { if (arcMsg) arcMsg.textContent = t || ''; }
+      function loadArchive() {
+        arcList.innerHTML = '<div class="arc-empty">正在读取…</div>';
+        fetch('/api/archive/list?source=pc').then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (!j || !j.ok) throw new Error((j && j.error) || '读取失败');
+            var items = j.items || [];
+            if (!items.length) {
+              arcList.innerHTML = '<div class="arc-empty">档案还是空的。重建一次 PC 页签后，见过的游戏就会记进来。</div>';
+              return;
+            }
+            arcList.innerHTML = items.map(function (it) {
+              return '<div class="arc-row" data-key="' + escHtml(it.key) + '">' +
+                '<span class="arc-name">' + escHtml(it.title || it.key) + '</span>' +
+                '<span class="arc-meta">' + fmtMin(it.minutes) + '</span>' +
+                '<span class="arc-tag' + (it.inCurrent ? ' current' : '') + '">' +
+                  (it.inCurrent ? '在库' : '已不在库') + '</span>' +
+                '<button class="arc-del" type="button">移除</button>' +
+              '</div>';
+            }).join('');
+            [].forEach.call(arcList.querySelectorAll('.arc-row'), function (rowEl) {
+              var key = rowEl.getAttribute('data-key');
+              var name = (rowEl.querySelector('.arc-name') || {}).textContent || key;
+              rowEl.querySelector('.arc-del').addEventListener('click', function () {
+                if (!window.confirm('确定从历史档案里移除「' + name + '」？\n移除后如果游戏还在库里，下次重建会重新记进来；如果已经删了，这条记录就再也找不回来了。')) return;
+                arcSay('正在移除…');
+                fetch('/api/archive/remove', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ source: 'pc', key: key })
+                }).then(function (r) { return r.json(); }).then(function (j2) {
+                  if (!j2 || !j2.ok) throw new Error((j2 && j2.error) || '移除失败');
+                  reloadSource('pc').then(function () { loadArchive(); arcSay('已移除，PC 页签已重建'); });
+                }).catch(function (e) { arcSay('移除失败：' + e.message); });
+              });
+            });
+          })
+          .catch(function (e) { arcList.innerHTML = '<div class="arc-empty">读取失败：' + escHtml(e.message) + '</div>'; });
+      }
+      arcWrap.addEventListener('toggle', function () { if (arcWrap.open) loadArchive(); });
+      if (arcRefresh) arcRefresh.addEventListener('click', loadArchive);
+    }
 
     loadStatus();
   })();
