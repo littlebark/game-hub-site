@@ -506,7 +506,7 @@
   var currentPlatform = 'all';
   var currentSort = 'lastPlayed';   // lastPlayed | playtime | achievements | title
   var ninYearFilter = '';           // 任天堂列表「按首次游玩年份」筛选（'' = 全部）
-  var beatenFilter = '';            // '' = 全部游戏 | 'beaten' = 只看通关
+  var beatenFilter = '';            // '' = 全部游戏 | 'beaten' = 已通关 | 'playing' = 未通关（value 是内部标识，不改）
 
   /** 封面 HTML：有图用图（图挂了露出首字母色块），没图用首字母色块 */
   /**
@@ -534,9 +534,10 @@
     return false;
   }
 
-  // 「通关」筛选用：除视觉上的绿框/绿勾口径（beaten / finished）外，
+  // 「已通关」筛选用：除视觉上的绿框/绿勾口径（beaten / finished）外，
   // 也把 RA 精通 mastered 算进来，与统计页 :796-798 的「通关 = beaten + mastered」对齐。
   // 视觉仍由 isBeatenAward() 决定 —— mastered 是满成就金框，优先级最高，不显示绿勾。
+  // 「未通关」筛选取本函数的反集，两个筛选项互斥且合起来等于全部游戏。
   function isClearedGame(game) {
     var ps = game.platforms || [];
     for (var i = 0; i < ps.length; i++) {
@@ -686,7 +687,7 @@
     if (!el) return;
     var best = null, bestLast = '';
     // 跟着页签走：手机页签横幅从手机应用里挑，其余页签不含手机应用
-    // 「通关」筛选只作用于下方游戏列表，横幅仍取全池最近游玩（有意设计，不随筛选变）
+    // 「已通关 / 未通关」筛选只作用于下方游戏列表，横幅仍取全池最近游玩（有意设计，不随筛选变）
     var pool = displayPool();
     // 手机页签优先展示「游戏」，没有合适的再退回应用（用户 2026-10-20 定）——
     // 微信、B站这类每天都有使用记录，不优先的话横幅永远是应用
@@ -1293,7 +1294,8 @@
         '<span class="sort-label">筛选</span>' +
         '<select id="beaten-filter">' +
           '<option value="">全部游戏</option>' +
-          '<option value="beaten">通关</option>' +
+          '<option value="beaten">已通关</option>' +
+          '<option value="playing">未通关</option>' +
         '</select>';
       listEl.appendChild(sortBar);
       sortBar.querySelector('#sort-select').addEventListener('change', function (e) {
@@ -1333,6 +1335,9 @@
     }
     if (beatenFilter === 'beaten') {
       games = games.filter(function (g) { return isClearedGame(g); });
+    } else if (beatenFilter === 'playing') {
+      // 未通关 = 已通关的反集：没有 beaten/mastered/finished 标记的都算
+      games = games.filter(function (g) { return !isClearedGame(g); });
     }
 
     // 年份筛选：候选年份从「当前页签里的游戏」的首次游玩时间取，倒序排（新的在前）
@@ -1358,7 +1363,8 @@
     if (games.length === 0) {
       var barEmpty = listEl.querySelector('.sort-bar');
       listEl.innerHTML = '<div class="placeholder"><div class="big">[ ]</div><h2>' +
-        (beatenFilter === 'beaten' ? '没有标记通关的游戏' : '该平台暂无游戏') + '</h2></div>';
+        (beatenFilter === 'beaten' ? '没有已通关的游戏'
+          : beatenFilter === 'playing' ? '没有未通关的游戏' : '该平台暂无游戏') + '</h2></div>';
       if (barEmpty) listEl.insertBefore(barEmpty, listEl.firstChild);
       appendPhoneHiddenBar(listEl);
       return;
