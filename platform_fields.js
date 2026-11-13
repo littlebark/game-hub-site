@@ -81,9 +81,10 @@ window.PLATFORM_FIELDS = {
   ],
 
   /* ---------- PC（Playnite 本地库，2026-10-22 接入）----------
-   * Steam / Xbox / Epic 的官方条目不在这里（各自页签已有），只有 Playnite 归到 PC 的本地游戏。 */
+   * Steam / Xbox / Epic 的官方条目不在这里（各自页签已有），只有 Playnite 归到 PC 的本地游戏。
+   * 「启动次数」由 app.js 通用格用 launchSessions.length 显示，登记表里不再列 playCount，
+   * 免得详情页出现两个同名格（2026-11-13 用户定）。 */
   pc: [
-    { key: 'playCount',   label: '启动次数', type: 'number' },
     { key: 'sourceGroup', label: '分组',     type: 'text' },   // 本地/PC · 未标注 · 已通关
     { key: 'installDir',  label: '安装目录', type: 'text' },
   ],

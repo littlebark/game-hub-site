@@ -920,6 +920,24 @@
   var nintendoDayKey = null;   // 点进去看明细的那一天（'YYYY-MM-DD'）
   var nintendoDayScope = null; // 上面这天是「哪个页签」点的（换页签要清掉）
 
+  /**
+   * 哪些页签在列表顶部显示「总日历」：任天堂全家族 + PC（2026-11-13 接 GameActivity 逐次会话）。
+   * 手机刻意不做总日历（用户 2026-10-20 定：天天用，柱子全是满的没信息量），但详情页有。
+   */
+  function calendarPlatform() {
+    if (isNintendoPlatform(currentPlatform) || currentPlatform === 'nintendo') return 'nintendo';
+    if (currentPlatform === 'pc') return 'pc';
+    return null;
+  }
+
+  /** 当前总日历里，一条 platform 记录算不算数 */
+  function calendarRecordMatches(p) {
+    var scope = calendarPlatform();
+    if (scope === 'nintendo') return isNintendoPlatform(p.platform);
+    if (scope === 'pc') return p.platform === 'pc';
+    return false;
+  }
+
   function dailyBarsHtml(map, days) {
     var cols = [], total = 0, active = 0, max = 0;
     var base = new Date();
@@ -963,15 +981,13 @@
    */
   function nintendoDayGames(dateKey) {
     var out = [];
+    if (!calendarPlatform()) return out;
     (DATA.games || []).forEach(function (g) {
       if (!matchesPlatform(g, currentPlatform)) return;
       (g.platforms || []).forEach(function (p) {
-        if (!isNintendoPlatform(p.platform)) return;
-        var arr = (window.NINTENDO_PLAY_DAYS || {})[p.externalId];
-        if (!arr) return;
-        for (var i = 0; i < arr.length; i++) {
-          if (arr[i][0] === dateKey) out.push({ game: g, p: p, minutes: arr[i][1] || 0 });
-        }
+        if (!calendarRecordMatches(p)) return;
+        var m = gameDailyMap(p);       // 任天堂走总表，PC / 手机走 extra.daily，通用
+        if (m[dateKey]) out.push({ game: g, p: p, minutes: m[dateKey] });
       });
     });
     out.sort(function (a, b) { return b.minutes - a.minutes; });
@@ -1008,14 +1024,14 @@
   /** 取「当前页签范围内」的按天汇总：{ 'YYYY-MM-DD': 分钟 } */
   function nintendoDailyMap() {
     var out = {};
+    if (!calendarPlatform()) return out;
     var games = (DATA.games || []).filter(function (g) { return matchesPlatform(g, currentPlatform); });
     games.forEach(function (g) {
       (g.platforms || []).forEach(function (p) {
-        if (!isNintendoPlatform(p.platform)) return;
-        var arr = (window.NINTENDO_PLAY_DAYS || {})[p.externalId];
-        if (!arr) return;
-        for (var i = 0; i < arr.length; i++) {
-          out[arr[i][0]] = (out[arr[i][0]] || 0) + (arr[i][1] || 0);
+        if (!calendarRecordMatches(p)) return;
+        var m = gameDailyMap(p);
+        for (var k in m) {
+          if (Object.prototype.hasOwnProperty.call(m, k)) out[k] = (out[k] || 0) + (m[k] || 0);
         }
       });
     });
@@ -1055,18 +1071,20 @@
     if (!gameMonth[key]) gameMonth[key] = latestMonthOf(map);
     return monthBarsHtml(map, gameMonth[key], {
       navId: key,
-      verb: isNintendoPlatform(p.platform) ? '玩了' : '用了',
+      verb: (isNintendoPlatform(p.platform) || p.platform === 'pc') ? '玩了' : '用了',
     });
   }
 
   function gameCalendarSection(game) {
-    // 任天堂 = 游玩日历；手机 = 使用日历（用户 2026-10-20 定：手机详情页也要日历，
+    // 任天堂 / PC = 游玩日历；手机 = 使用日历（用户 2026-10-20 定：手机详情页也要日历，
     // 但列表页顶部那条「总日历」不要 —— 手机天天用，柱子全是满的没信息量）
-    var p = (game.platforms || []).filter(function (x) { return isNintendoPlatform(x.platform); })[0]
-         || phoneEntry(game);
+    // PC 走 extra.daily（GameActivity 逐次会话），和手机共用 gameDailyMap 的通用分支。
+    var p = (game.platforms || []).filter(function (x) {
+      return isNintendoPlatform(x.platform) || x.platform === 'pc';
+    })[0] || phoneEntry(game);
     if (!p) return '';
     gameCalCtx = p;
-    var title = isNintendoPlatform(p.platform) ? '游玩日历' : '使用日历';
+    var title = (isNintendoPlatform(p.platform) || p.platform === 'pc') ? '游玩日历' : '使用日历';
     return '<div class="section-title">' + title + '</div>' +
       '<div id="game-cal-box">' + gameCalendarHtml(p) + '</div>';
   }
@@ -1083,17 +1101,17 @@
     var rng = e.target.closest('[data-ns-range]');
     if (rng) {
       nintendoRange = Number(rng.getAttribute('data-ns-range')) || 30;
-      renderNintendoOverview('nintendo');
+      renderNintendoOverview();
       return;
     }
     var closeBtn = e.target.closest('[data-ns-dayclose]');
-    if (closeBtn) { nintendoDayKey = null; renderNintendoOverview('nintendo'); return; }
+    if (closeBtn) { nintendoDayKey = null; renderNintendoOverview(); return; }
 
     var col = e.target.closest('[data-ns-day]');
     if (col) {
       var key = col.getAttribute('data-ns-day');
       nintendoDayKey = (nintendoDayKey === key) ? null : key;   // 再点一下收起
-      renderNintendoOverview('nintendo');
+      renderNintendoOverview();
       return;
     }
 
@@ -1153,17 +1171,17 @@
     refreshGameCalendar();
   });
 
-  /** 顶部「任天堂游玩日历」总览（位置同 RA 概览条） */
-  function renderNintendoOverview(activeGroup) {
+  /** 顶部「游玩日历」总览（位置同 RA 概览条）：任天堂全家族 + PC */
+  function renderNintendoOverview() {
     var el = document.getElementById('nintendo-overview');
     if (!el) return;
-    var inNin = isNintendoPlatform(currentPlatform) || currentPlatform === 'nintendo';
-    if (!inNin || activeGroup !== 'nintendo') { el.className = ''; el.innerHTML = ''; return; }
+    var cal = calendarPlatform();
+    if (!cal) { el.className = ''; el.innerHTML = ''; return; }
 
     var map = nintendoDailyMap();
     var allKeys = Object.keys(map);
     if (!allKeys.length) { el.className = ''; el.innerHTML = ''; return; }
-    // 换主机页签时清掉「点进去的那天」，免得明细和柱状图不是一个范围
+    // 换页签时清掉「点进去的那天」，免得明细和柱状图不是一个范围
     if (nintendoDayScope !== currentPlatform) {
       nintendoDayScope = currentPlatform;
       nintendoDayKey = null;
@@ -1172,11 +1190,13 @@
     var totalMin = 0, dayCount = 0;
     allKeys.forEach(function (k) { totalMin += map[k]; dayCount += 1; });
     var scope = getPlatform(currentPlatform);
-    var scopeName = (currentPlatform === 'nintendo') ? '全部主机' : (scope ? scope.name : '');
+    var scopeName = (cal === 'pc') ? 'PC'
+      : (currentPlatform === 'nintendo') ? '全部主机' : (scope ? scope.name : '');
+    var calTitle = (cal === 'pc') ? 'PC · 游玩日历' : 'Nintendo · 游玩日历';
 
     el.className = 'nintendo-overview';
     el.innerHTML =
-      '<div class="ra-head"><span class="ra-title">Nintendo · 游玩日历</span>' +
+      '<div class="ra-head"><span class="ra-title">' + calTitle + '</span>' +
         '<span class="ra-user">' + esc(scopeName) + '</span>' +
         '<span class="ra-time">共 ' + dayCount + ' 天有记录 · 累计 ' + formatMinutes(totalMin) + '</span>' +
       '</div>' +
@@ -1275,7 +1295,7 @@
     });
 
     renderRaOverview(activeGroup);
-    renderNintendoOverview(activeGroup);
+    renderNintendoOverview();
     // 手机不做列表页总日历（用户 2026-10-20 定：手机天天用，柱子全是满的没信息量）；
     // 日历放在每个应用的详情页里（gameCalendarSection 已支持手机）。
 
@@ -1845,8 +1865,11 @@
         })() +
         '<div class="section-title">' + esc(gameSourceLabel(game) || '平台') + ' 原始数据（按该平台自己的字段展示）</div>' +
         pcards +
-        (showAch ? '<div class="section-title">成就列表（' + achCountText(a.achUnlocked, a.achTotal) + '）</div>' + achBlockHtml : '') +
+        // 游玩日历排在成就列表之前（2026-11-13 用户定）：PC 成就动辄几十个格子，
+        // 日历放在后面会被撑到页面底部看不见。任天堂/手机本来就没有成就列表，
+        // 对调顺序后它们的位置不变（成就块是空串）。
         gameCalendarSection(game) +
+        (showAch ? '<div class="section-title">成就列表（' + achCountText(a.achUnlocked, a.achTotal) + '）</div>' + achBlockHtml : '') +
       '</div>';
 
     function close() {
