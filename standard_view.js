@@ -4,6 +4,9 @@ window.StdLibrary =
 (function(){
   'use strict';
   var ROOT = document.getElementById('page-library');
+  // 线上只读版：发布脚本把 index.html 的 GH_STATIC 改成 true（无服务端）。
+  // 隐藏一切会写数据的入口（通关/分类/隐藏切换、显示隐藏项），只保留浏览；数据显示照旧。
+  var READONLY = !!window.GH_STATIC;
   function _id(id){ return ROOT ? ROOT.querySelector('#'+id) : document.getElementById(id); }
   function _all(sel){ return ROOT ? ROOT.querySelectorAll(sel) : document.querySelectorAll(sel); }
   var ALL = window.GAME_DATA_STANDARD || [];
@@ -122,11 +125,13 @@ window.StdLibrary =
       if(!counts[gp.id])return;
       h+='<button class="tab'+(curGroup===gp.id?' active':'')+'" data-g="'+gp.id+'">'+gp.name+'<small>'+counts[gp.id]+'</small></button>';
     });
-    // hidden 开关：验证「隐藏是标准字段，不是手机特判」
-    h+='<button class="tab'+(showHidden?' active':'')+'" id="toggle-hidden" style="margin-left:auto">'+
-      (showHidden?'隐藏已显示':'显示隐藏项 ('+ALL.filter(function(x){return srcOf(x).hidden===true}).length+')')+'</button>';
+    // hidden 开关：验证「隐藏是标准字段，不是手机特判」。线上只读版隐藏此写/视图入口。
+    if(!READONLY){
+      h+='<button class="tab'+(showHidden?' active':'')+'" id="toggle-hidden" style="margin-left:auto">'+
+        (showHidden?'隐藏已显示':'显示隐藏项 ('+ALL.filter(function(x){return srcOf(x).hidden===true}).length+')')+'</button>';
+    }
     _id('tabs').innerHTML=h;
-    _id('toggle-hidden').onclick=function(){showHidden=!showHidden;render()};
+    var th=_id('toggle-hidden'); if(th) th.onclick=function(){showHidden=!showHidden;render()};
     [].forEach.call(_all('.tab[data-g]'),function(b){
       b.onclick=function(){curGroup=b.getAttribute('data-g');curSub='all';render()}});
   }
@@ -435,9 +440,11 @@ window.StdLibrary =
       '<div class="sub">'+esc(subLabel(s.platform||''))+' · '+esc(g.id)+'</div></div>'+
       '<button class="close" id="dlgclose">×</button></div><div class="dlg-bd">'+
       '<div class="sec"><h3>标准字段</h3>'+
-      '<div class="edit-note">通关 / 分类 / 隐藏 是可点击入口（点格子切换）。修改会保存到人工层，每日同步后写入标准数据。</div>'+
+      (READONLY?'':'<div class="edit-note">通关 / 分类 / 隐藏 是可点击入口（点格子切换）。修改会保存到人工层，每日同步后写入标准数据。</div>')+
       '<div class="kv">'+cells.map(function(c){
-        return '<div class="cell'+(c[2]?' act':'')+'"'+(c[2]?' data-act="'+c[2]+'" title="点击切换"':'')+'>'+
+        // 线上只读版：三格照常显示数据，但不给 act/data-act，不可点击、无 ⇄ 标记
+        var editable = c[2] && !READONLY;
+        return '<div class="cell'+(editable?' act':'')+'"'+(editable?' data-act="'+c[2]+'" title="点击切换"':'')+'>'+
           '<div class="k">'+c[0]+'</div><div class="v">'+esc(c[1])+'</div></div>'}).join('')+'</div>'+
       descHtml(g)+'</div>';
     // 详情页顺序（用户 2026-11-16 定）：标准字段 → 平台特有字段 → 日历 → 成就。
@@ -460,7 +467,8 @@ window.StdLibrary =
       im.onclick=function(){im.classList.toggle('zoom')};
     });
     // 三个标准字段入口：先改内存即时反馈，再写回人工层（fetch 失败不崩，离线 PoC 仍可切换）
-    [].forEach.call(_all('.cell.act'),function(cell){
+    // 线上只读版：上面已不给三格 act class，这里再判一次 READONLY 双保险，绝不写数据（月历翻月是纯视图，不受影响）
+    if(!READONLY) [].forEach.call(_all('.cell.act'),function(cell){
       cell.onclick=function(){
         var act=cell.getAttribute('data-act'),cur=ALL.filter(function(x){return x.id===g.id})[0];
         if(!cur)return;
