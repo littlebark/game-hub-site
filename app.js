@@ -1204,6 +1204,13 @@
   }
 
   function renderLibrary() {
+    // 标准数据渲染器接管游戏库页：整页走 standard_view.js（唯一数据源 = 标准数据 + 人工层）。
+    // 生涯/数据库/导入三页仍走本文件其余逻辑，不受影响。StdLibrary 未加载时（如脚本异常）降级到旧渲染。
+    if (window.StdLibrary) {
+      if (!window._stdLibMounted) { window.StdLibrary.mount(); window._stdLibMounted = true; }
+      else { window.StdLibrary.render(); }
+      return;
+    }
     renderHero();
     var tabsEl = document.getElementById('library-tabs');
     var listEl = document.getElementById('library-list');

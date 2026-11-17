@@ -6,6 +6,7 @@
   <title>聚合游戏平台 · 个人游戏库</title>
   <!-- 纯本地样式，无任何外部/CDN 资源 -->
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="standard_view.css">
   <script>
   /* ==================== 页面背景（提前执行，避免刷新时闪一下默认色） ====================
    * 设置保存在 localStorage（本机浏览器），自定义图片本体存在本机 assets/background/。
@@ -54,17 +55,23 @@
 
       <!-- 页面 1：游戏库（Exophase 风格） -->
       <section id="page-library" class="page active">
-        <div class="page-head">
-          <div>
-            <div class="page-title">游戏库</div>
-            <div class="page-sub">聚合你在各平台的游戏与游玩记录</div>
+        <!-- 标准数据渲染器（standard_view.js）接管整页：DOM 骨架 + 样式见 standard_view.css。
+             旧版 app.js 渲染容器（library-hero/tabs/list 等）已移除；生涯/数据库/导入三页不受影响。 -->
+        <div class="wrap">
+          <div class="page-head">
+            <div>
+              <div class="page-title">游戏库</div>
+              <div class="page-sub">标准数据 · 聚合你在各平台的游戏与游玩记录</div>
+            </div>
           </div>
+          <div class="hero" id="hero"></div>
+          <div class="tabs" id="tabs"></div>
+          <div class="subtabs" id="subtabs"></div>
+          <div class="sort-bar" id="sortbar"></div>
+          <div class="stats" id="stats"></div>
+          <div class="list" id="list"></div>
         </div>
-        <div id="library-hero"><!-- 最近游玩横幅：app.js 用最近一款游戏的封面做背景 --></div>
-        <div class="tabs-wrap" id="library-tabs"><!-- 数据源页签 + 平台页签，由 app.js 注入 --></div>
-        <div id="ra-overview"><!-- RA（老游戏/Retro）概览条：只在看 RA 数据时出现 --></div>
-        <div id="nintendo-overview"><!-- 游玩日历（总日历）：看任天堂 / PC 数据时出现，位置同 RA 概览 --></div>
-        <div class="game-list" id="library-list"><!-- 游戏行由 app.js 注入 --></div>
+        <div class="mask" id="mask"><div class="dlg" id="dlg"></div></div>
       </section>
 
       <!-- 页面 4：游戏数据库（docs/03 §16.7） -->
@@ -407,6 +414,10 @@
   <script src="data_pc.js"></script>
   <!-- 自定义标记（通关 / 弃坑 …）：只存手改，重新拉数据不会冲掉；线上只读版照样能看 -->
   <script src="data_custom.js"></script>
+  <!-- 标准数据渲染器（游戏库页唯一数据源）：standard_games 快照 + 人工层标记 + 渲染器本体。
+       数据由 tools/to_standard_game.mjs 生成；渲染器把游戏库页整体接管，其他三页仍走 app.js。 -->
+  <script src="standard_preview_data.js"></script>
+  <script src="standard_view.js"></script>
   <!-- platform_fields.js = 各平台特有字段登记表（新增平台时填这里） -->
   <script src="platform_fields.js"></script>
   <script src="app.js"></script>
