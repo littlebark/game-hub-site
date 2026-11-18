@@ -3363,8 +3363,23 @@
       return '<div class="db-e-row"><label>' + label + '</label>' + input + '</div>';
     };
     var listJoin = function (a) { return (a || []).join('、'); };
+    // 联网查询区（2026-11-17）：手填易错，这里查 Steam/Bangumi 后把空字段一键填进下方表单。
+    // 只填空白 / 假中文名，已有真值不覆盖；填入后仍需用户点「保存」才落库并锁定。
+    var lookup =
+      '<div class="db-edit-lookup">' +
+        '<div class="db-add-hint" style="margin:0 0 6px">联网查询资料（Steam 优先，搜不到自动换 Bangumi）：查到后点一条，自动填进下方空字段，已有内容不会被覆盖，确认后再保存。</div>' +
+        '<div class="db-add-row">' +
+          '<input id="db-edit-q" class="db-input" style="flex:1" value="' + esc(g.displayName || '') + '" placeholder="游戏名">' +
+          '<select id="db-edit-source" class="db-input" style="width:auto" title="数据源：自动=Steam优先，搜不到自动换 Bangumi">' +
+            '<option value="auto">源：自动</option><option value="steam">Steam</option><option value="bangumi">Bangumi（中文名全）</option>' +
+          '</select>' +
+          '<button class="src-btn" id="db-edit-search" type="button">查询</button>' +
+        '</div>' +
+        '<div id="db-edit-search-hint" class="db-add-hint" style="margin:4px 0"></div>' +
+        '<div id="db-edit-results" class="db-results"></div>' +
+      '</div>';
     document.getElementById('db-edit-body').innerHTML =
-      head +
+      head + lookup +
       row('displayName', '显示名', g.displayName, '列表和页签里显示的名字') +
       row('zh', '中文名', g.names && g.names.zh, '官方或常用中文译名') +
       row('en', '英文名', g.names && g.names.en, '') +
@@ -3376,6 +3391,71 @@
       row('shortDescription', '简介', g.shortDescription, '一两句话介绍', true);
     document.getElementById('db-edit-hint').textContent = '';
     document.getElementById('db-edit-mask').style.display = 'flex';
+    var searchBtn = document.getElementById('db-edit-search');
+    if (searchBtn) searchBtn.addEventListener('click', dbEditLookup);
+  }
+
+  /** 编辑弹窗里的联网查询：复用 /api/library/search（Steam 优先、Bangumi 兜底） */
+  function dbEditLookup() {
+    var q = String((document.getElementById('db-edit-q') || {}).value || '').trim();
+    var src = String((document.getElementById('db-edit-source') || {}).value || 'auto');
+    var resEl = document.getElementById('db-edit-results');
+    var hint = document.getElementById('db-edit-search-hint');
+    if (!q) { hint.textContent = '先输入游戏名。'; return; }
+    hint.textContent = '正在搜索「' + q + '」…（最长约 40 秒）';
+    resEl.innerHTML = '';
+    fetch('/api/library/search?q=' + encodeURIComponent(q) + '&source=' + encodeURIComponent(src))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { hint.textContent = '查询失败：' + (j.error || '未知错误'); return; }
+        var items = j.items || [];
+        if (!items.length) {
+          hint.textContent = '没搜到（Steam 和 Bangumi 都没有）。可切换数据源再试，或直接在下方手填。';
+          return;
+        }
+        var srcLabel = j.source === 'bangumi' ? 'Bangumi' : 'Steam';
+        hint.textContent = '找到 ' + items.length + ' 条（来自 ' + srcLabel + '），点一条把资料填进下方：';
+        resEl.innerHTML = items.map(function (it, i) {
+          var isBgm = it.source === 'bangumi';
+          var sub = isBgm
+            ? [it.releaseDate ? String(it.releaseDate).slice(0, 10) : '', it.nameEn && it.nameEn !== it.nameZh ? it.nameEn : '']
+            : [it.releaseDate ? String(it.releaseDate).slice(0, 4) : '', (it.developers || [])[0] || ''];
+          return '<div class="db-res" data-i="' + i + '">' +
+            (it.cover ? '<img src="' + esc(it.cover) + '" alt="">' : '<div style="width:92px"></div>') +
+            '<div class="r-main"><div class="r-name">' + esc(it.nameZh || it.nameEn) +
+            (it.nameZh && it.nameEn && it.nameZh !== it.nameEn ? ' <span style="opacity:.6;font-weight:400">' + esc(it.nameEn) + '</span>' : '') +
+            (isBgm ? '<span style="margin-left:6px;font-size:12px;font-weight:400;opacity:.85">Bangumi</span>' : '') +
+            '</div><div class="r-sub">' + esc(sub.filter(Boolean).join(' · ')) + '</div></div></div>';
+        }).join('');
+        [].forEach.call(resEl.querySelectorAll('.db-res'), function (el) {
+          el.addEventListener('click', function () { dbEditApplyCandidate(items[Number(el.getAttribute('data-i'))]); });
+        });
+      })
+      .catch(function (e) { hint.textContent = '查询出错：' + e.message; });
+  }
+
+  /** 把查询结果填进编辑表单：只填空字段与「假中文名」，已有真值不覆盖 */
+  function dbEditApplyCandidate(it) {
+    var hasCJK = function (s) { return /[\u4e00-\u9fff\u3040-\u30ff]/.test(String(s || '')); };
+    var setVal = function (key, value) {
+      var el = document.getElementById('db-e-' + key);
+      if (el && value) el.value = String(value);
+    };
+    var filled = [];
+    var zhEl = document.getElementById('db-e-zh');
+    if (zhEl && it.nameZh && hasCJK(it.nameZh) && !hasCJK(zhEl.value)) {
+      zhEl.value = it.nameZh; filled.push('中文名');
+    }
+    if (!document.getElementById('db-e-en').value && it.nameEn) { setVal('en', it.nameEn); filled.push('英文名'); }
+    if (!document.getElementById('db-e-releaseDate').value && it.releaseDate) { setVal('releaseDate', String(it.releaseDate).slice(0, 10)); filled.push('发售日'); }
+    if (!document.getElementById('db-e-developers').value && (it.developers || []).length) { setVal('developers', it.developers.join('、')); filled.push('开发商'); }
+    if (!document.getElementById('db-e-publishers').value && (it.publishers || []).length) { setVal('publishers', it.publishers.join('、')); filled.push('发行商'); }
+    if (!document.getElementById('db-e-genres').value && (it.genres || []).length) { setVal('genres', it.genres.join('、')); filled.push('类型'); }
+    if (!document.getElementById('db-e-shortDescription').value && it.shortDescription) { setVal('shortDescription', it.shortDescription); filled.push('简介'); }
+    var hint = document.getElementById('db-edit-search-hint');
+    if (hint) hint.textContent = filled.length
+      ? '已填入：' + filled.join('、') + '。请核对下方内容，确认后点「保存」。'
+      : '这条没有可补的空字段（已有资料都保留了）。';
   }
 
   function dbCloseEdit() {

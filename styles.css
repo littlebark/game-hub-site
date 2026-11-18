@@ -1571,6 +1571,8 @@ select.year-select {
 
 /* ===== 游戏数据库：编辑资料弹窗 ===== */
 .db-edit-modal { max-width: 560px; max-height: 86vh; overflow: auto; }
+.db-edit-lookup { border: 1px solid var(--border, #e3e8f2); border-radius: 8px; padding: 10px; margin: 4px 0 14px; background: var(--bg-1, #f6f8fc); }
+.db-edit-lookup .db-results { max-height: 180px; }
 .db-e-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .db-e-row label { width: 60px; flex: none; text-align: right; font-size: 13px; color: var(--text-1); padding-top: 8px; }
 .db-e-row .db-input { flex: 1; min-width: 0; width: auto; }
