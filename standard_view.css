@@ -69,12 +69,22 @@
   #page-library .subtabs{flex-wrap:nowrap;overflow-x:auto;gap:5px;margin-bottom:10px;padding:7px 10px;scrollbar-width:none}
   #page-library .subtabs::-webkit-scrollbar{display:none}
   #page-library .subtab{flex:0 0 auto;padding:3px 9px;font-size:11px;border-radius:999px;white-space:nowrap}
-  /* 排序条：label + 下拉两列对齐，不再挤成散乱两行 */
-  #page-library .sort-bar{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 10px;padding:9px 11px;margin-bottom:12px}
-  #page-library .sort-bar select{width:100%;min-height:36px;font-size:12px;padding:6px 8px}
+  /* 排序条：一行横滑紧凑带（label 紧贴下拉），像小黑盒那样不占三行 */
+  #page-library .sort-bar{display:flex;flex-wrap:nowrap;overflow-x:auto;align-items:center;gap:4px;padding:7px 10px;margin-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #page-library .sort-bar::-webkit-scrollbar{display:none}
+  #page-library .sort-bar .sort-label{flex:0 0 auto;font-size:11px;color:var(--t2);margin-right:-2px}
+  #page-library .sort-bar select{flex:0 0 auto;width:auto;min-width:92px;min-height:32px;font-size:12px;padding:5px 22px 5px 8px;margin-right:5px}
+  /* 统计卡：数字压小、卡片压矮，别把游戏列表挤下屏 */
+  #page-library .stat{padding:8px 11px}
+  #page-library .stat .n{font-size:17px}
+  #page-library .stat .l{font-size:10px;margin-top:2px}
 }
 @media(max-width:420px){
   #page-library .hero .hero-cover{width:66px;height:66px;flex-basis:66px}
   #page-library .hero .hero-title{max-width:calc(100vw - 116px)}
   #page-library .page-title{font-size:18px}
+  /* 窄屏统计仍排 3 列（5 张卡两行），比 2 列三行省一整行 */
+  #page-library .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #page-library .stat{padding:7px 8px}
+  #page-library .stat .n{font-size:16px}
 }
