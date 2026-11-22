@@ -40,3 +40,41 @@
 @media(max-width:420px){#page-library .stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){#page-library .row{flex-wrap:wrap}#page-library .achbox{flex:1 1 100%;width:auto}#page-library .gdate{width:auto}#page-library .ach-list{grid-template-columns:repeat(2,minmax(0,1fr))}#page-library .row{padding:10px 12px;gap:10px}#page-library .row > .cover, #page-library .row > .cover-ph{width:68px;height:68px;flex:0 0 68px;border-radius:10px;font-size:26px}#page-library .dlg-hd .cover, #page-library .dlg-hd .cover-ph{width:64px;height:64px;flex-basis:64px;font-size:24px}}
 @media(max-width:420px){#page-library .row > .cover, #page-library .row > .cover-ph{width:56px;height:56px;flex:0 0 56px}#page-library .ach-list{grid-template-columns:repeat(1,minmax(0,1fr))}}
+
+/* ============================================================
+   手机端首屏 App 化收紧（2026-11-22）
+   参考小黑盒：平台切换压成一条细小横滑带，主屏留给游戏列表；
+   顶部导航交给 styles.css 的底栏，这里只管游戏库页首屏四块。
+   全部带 #page-library 前缀并放在文件最后，盖住前面的桌面样式。
+   ============================================================ */
+@media(max-width:760px){
+  #page-library .wrap{padding:12px 12px 20px}
+  /* 页头：小标题 + 副标题，别占两行 */
+  #page-library .page-head{margin-bottom:12px;gap:4px}
+  #page-library .page-title{font-size:19px}
+  #page-library .page-sub{font-size:12px}
+  /* 最近游玩：封面缩小、标题单行省略、meta 紧凑换行 */
+  #page-library .hero{min-height:0;margin-bottom:12px}
+  #page-library .hero .hero-inner{gap:12px;padding:12px;align-items:center}
+  #page-library .hero .hero-cover{width:76px;height:76px;flex-basis:76px;font-size:24px}
+  #page-library .hero .hero-title{font-size:16px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 130px)}
+  #page-library .hero .hero-title span{font-size:12px !important}
+  #page-library .hero .hero-label{font-size:11px;margin-bottom:3px}
+  #page-library .hero .hero-meta{gap:5px 8px;margin-top:6px;font-size:11px}
+  /* 平台页签：细小横滑单行，不换行（小黑盒式），数字徽标缩小 */
+  #page-library .tabs{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin-bottom:8px;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #page-library .tabs::-webkit-scrollbar{display:none}
+  #page-library .tab{flex:0 0 auto;padding:5px 11px;font-size:12px;border-radius:999px;white-space:nowrap}
+  #page-library .tab small{margin-left:4px;font-size:10px}
+  #page-library .subtabs{flex-wrap:nowrap;overflow-x:auto;gap:5px;margin-bottom:10px;padding:7px 10px;scrollbar-width:none}
+  #page-library .subtabs::-webkit-scrollbar{display:none}
+  #page-library .subtab{flex:0 0 auto;padding:3px 9px;font-size:11px;border-radius:999px;white-space:nowrap}
+  /* 排序条：label + 下拉两列对齐，不再挤成散乱两行 */
+  #page-library .sort-bar{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 10px;padding:9px 11px;margin-bottom:12px}
+  #page-library .sort-bar select{width:100%;min-height:36px;font-size:12px;padding:6px 8px}
+}
+@media(max-width:420px){
+  #page-library .hero .hero-cover{width:66px;height:66px;flex-basis:66px}
+  #page-library .hero .hero-title{max-width:calc(100vw - 116px)}
+  #page-library .page-title{font-size:18px}
+}

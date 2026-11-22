@@ -387,6 +387,15 @@
       </section>
 
     </main>
+
+    <!-- 手机端底部 Tab 栏（桌面隐藏）。复用 .nav-btn[data-page]，navigate() 会自动同步高亮；
+         各脚本里 querySelector('.nav-btn[data-page="library"]').click() 仍能命中顶部那个，行为不变。 -->
+    <nav class="mobile-tabbar" aria-label="主导航">
+      <button class="nav-btn" data-page="library"><span class="tb-ico">▦</span><span>游戏库</span></button>
+      <button class="nav-btn" data-page="career"><span class="tb-ico">◷</span><span>生涯</span></button>
+      <button class="nav-btn" data-page="db"><span class="tb-ico">▤</span><span>数据库</span></button>
+      <button class="nav-btn" data-page="import"><span class="tb-ico">↧</span><span>导入</span></button>
+    </nav>
   </div>
 
   <!-- 经典 script 标签，按依赖顺序加载；不使用 type="module"、不使用 import -->

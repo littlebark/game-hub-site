@@ -169,6 +169,9 @@ html.has-bg .modal {
   border-top: 1px solid var(--border);
 }
 
+/* 手机端底部 Tab 栏：桌面默认不显示，仅 @media(max-width:760px) 内打开 */
+.mobile-tabbar { display: none; }
+
 html {
   /* 滚动条槽位常驻：页面右侧始终留出可见的滚动条，不会滑到边缘才冒出来 */
   scrollbar-gutter: stable;
@@ -2488,8 +2491,48 @@ select.year-select {
   html.has-bg .sidebar { background: rgba(255, 255, 255, 0.92); }
   .logo { padding: 0; font-size: 14px; letter-spacing: 0; white-space: nowrap; flex: 0 0 auto; }
   .logo .dot { width: 9px; height: 9px; margin-right: 6px; }
-  .sidebar nav { display: flex; gap: 6px; flex: 0 0 auto; }
+  /* App 化导航（2026-11-22）：顶部收成纯标题条，切换交给底部 Tab 栏，避免上下两套重复 */
+  .sidebar nav { display: none; }             /* 顶部不再放导航按钮，改由底部 Tab 承担 */
+  .sidebar { padding: 10px 14px; min-height: 48px; }
+  .logo { font-size: 15px; }
   .nav-btn { display: inline-block; width: auto; margin: 0; padding: 8px 12px; min-height: 40px; font-size: 14px; white-space: nowrap; }
+  /* 底部 Tab 栏：固定、等分四格、带安全区，桌面端隐藏 */
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    background: rgba(255, 255, 255, 0.97);
+    border-top: 1px solid var(--border);
+    padding: 5px 4px calc(5px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -2px 12px rgba(23, 43, 77, 0.06);
+  }
+  html.has-bg .mobile-tabbar { background: rgba(255, 255, 255, 0.94); }
+  .mobile-tabbar .nav-btn {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: auto;
+    min-height: 48px;
+    margin: 0;
+    padding: 4px 2px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: transparent;
+    border-color: transparent;
+  }
+  .mobile-tabbar .nav-btn .tb-ico { font-size: 19px; line-height: 1; }
+  .mobile-tabbar .nav-btn.active {
+    background: transparent;
+    color: var(--accent);
+    border-color: transparent;
+  }
+  /* 底栏占位：给主内容留出被固定底栏遮住的高度 */
+  .main { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
   .sidebar-foot { display: none; }   /* 元素已随 HTML 移除，此行留作兼容 */
   /* 数据源切换已移除：游戏库页内页签负责切源（2026-10-22 用户定） */
   .src-btn { width: auto; margin-bottom: 0; padding: 8px 10px; min-height: 36px; font-size: 12px; white-space: nowrap; }
