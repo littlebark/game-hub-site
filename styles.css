@@ -2913,3 +2913,61 @@ body.gh-static .cn-item[data-panel="panel-week"] { display: none !important; }
 .psn-desc { font-size: 12.5px; color: #aaa; margin-top: 2px; word-break: break-word; }
 .psn-row.off .psn-desc { color: #8a8a8a; }
 .psn-meta { font-size: 11.5px; color: #777; margin-top: 3px; }
+
+/* ==================== 维护页：每日数据导入情况（2026-11-23） ====================
+ * 数据来自 /api/dailysync/history；失败平台红色高亮，默认一眼看清当天成败。 */
+#maint-content { max-width: 1000px; }
+.maint-loading, .maint-empty { padding: 28px 4px; font-size: 13.5px; color: var(--text-2); line-height: 1.8; }
+.maint-empty { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+
+.maint-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.maint-sum-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; box-shadow: var(--shadow); }
+.maint-sum-card .n { font-size: 24px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+.maint-sum-card.bad .n { color: var(--danger); }
+.maint-sum-card .l { font-size: 11.5px; color: var(--text-2); margin-top: 5px; }
+
+.maint-days { display: flex; flex-direction: column; gap: 12px; }
+.maint-day { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; box-shadow: var(--shadow); }
+.maint-day.has-fail { border-left: 4px solid var(--danger); }
+.maint-day-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.md-date { font-size: 15px; font-weight: 700; color: var(--text-0); }
+.md-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.md-badge.good { background: #e6f7ef; color: #16895b; }
+.md-badge.bad { background: #fdeaea; color: var(--danger); }
+.md-counts { font-size: 11.5px; color: var(--text-1); }
+.md-time { font-size: 11px; color: var(--text-3); margin-left: auto; }
+
+.maint-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 7px; }
+.maint-cell { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 9px;
+  background: #f6f8fc; border: 1px solid var(--border); }
+.maint-cell .mc-name { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.maint-cell .mc-state { font-size: 11px; color: var(--text-2); }
+.maint-cell.ok { background: #eef8f2; border-color: #c9ecd9; }
+.maint-cell.ok .mc-state { color: #16895b; }
+.maint-cell.failed { background: #fdeeee; border-color: #f4c9c9; }
+.maint-cell.failed .mc-name, .maint-cell.failed .mc-state { color: var(--danger); }
+.maint-cell.skipped { background: #f5f5f7; }
+.maint-cell.skipped .mc-state { color: var(--text-3); }
+.maint-cell.missing { opacity: 0.55; }
+.maint-cell .mc-note { font-size: 10.5px; color: var(--danger); line-height: 1.35; margin-top: 3px;
+  word-break: break-word; max-height: 42px; overflow: hidden; }
+
+.maint-fails { margin-top: 11px; padding: 9px 11px; background: #fff6f6; border: 1px solid #f4d2d2;
+  border-radius: 9px; display: flex; flex-direction: column; gap: 6px; }
+.maint-fail-row { display: flex; gap: 9px; font-size: 11.5px; line-height: 1.45; }
+.maint-fail-row b { color: var(--danger); white-space: nowrap; }
+.maint-fail-row span { color: var(--text-1); word-break: break-word; }
+
+/* 线上只读版：维护页依赖本地服务接口，静态站无此数据，隐藏入口 */
+body.gh-static .nav-btn[data-page="maint"] { display: none !important; }
+
+@media (max-width: 760px) {
+  .maint-summary { gap: 8px; }
+  .maint-sum-card { padding: 11px 10px; }
+  .maint-sum-card .n { font-size: 19px; }
+  .maint-day { padding: 12px; }
+  .md-time { margin-left: 0; width: 100%; }
+  .maint-cells { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+}

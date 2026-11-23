@@ -3287,6 +3287,152 @@
     }).catch(function (e) { hint.textContent = '添加失败：' + e.message; });
   }
 
+  /* ============================ 维护页：每日数据导入情况（2026-11-23） ============================ */
+  /* 数据源 /api/dailysync/history：按天归档的各平台同步结果。失败优先展示，不用翻服务日志。 */
+
+  // 每日同步的 9 个平台 key → 中文名（顺序 = 展示顺序，和 daily_sync.mjs 的 ORDER 一致）
+  var MAINT_PLATFORMS = [
+    { key: 'steam',    name: 'Steam' },
+    { key: 'xbox',     name: 'Xbox' },
+    { key: 'nintendo', name: 'Nintendo' },
+    { key: 'epic',     name: 'Epic' },
+    { key: 'ra',       name: 'Retro' },
+    { key: 'playnite', name: 'Playnite' },
+    { key: 'phone',    name: '手机' },
+    { key: 'ns-cfw',   name: '老 Switch' },
+    { key: 'ns-3ds',   name: '3DS' },
+  ];
+  var MAINT_STATE = {
+    ok:      { label: '成功', cls: 'ok' },
+    failed:  { label: '失败', cls: 'failed' },
+    skipped: { label: '跳过', cls: 'skipped' },
+  };
+
+  /** 把一次平台结果压成一句人话（数量 / 跳过原因 / 错误） */
+  function maintNote(r) {
+    if (!r) return '无记录';
+    if (r.state === 'failed') return r.error || r.reason || '失败（无详情）';
+    if (r.note) return r.note;                       // 如「跳过：not-newer」
+    var bits = [];
+    if (r.count != null) bits.push(r.count + ' 款');
+    if (r.withPlaytime != null) bits.push('时长 ' + r.withPlaytime + ' 款');
+    if (r.playtime && r.playtime.state === 'failed') bits.push('时长失败：' + (r.playtime.reason || '未知'));
+    if (r.playtime && r.playtime.state === 'ok' && r.playtime.total != null) bits.push('时长 ' + r.playtime.got + '/' + r.playtime.total);
+    if (r.archived != null) bits.push('补档 ' + r.archived);
+    return bits.length ? bits.join(' · ') : '正常';
+  }
+
+  /** 单日汇总：ok / failed / skipped 计数 + 整体状态 */
+  function maintDayStat(results) {
+    var s = { ok: 0, failed: 0, skipped: 0, missing: 0 };
+    MAINT_PLATFORMS.forEach(function (p) {
+      var r = results && results[p.key];
+      var st = r && r.state;
+      if (st === 'ok') s.ok++;
+      else if (st === 'failed') s.failed++;
+      else if (st === 'skipped') s.skipped++;
+      else s.missing++;
+    });
+    s.overall = s.failed > 0 ? 'failed' : 'ok';
+    return s;
+  }
+
+  function maintTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    // 用北京时间显示（和用户日常口径一致）
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(d);
+  }
+
+  function renderMaintenance() {
+    var el = document.getElementById('maint-content');
+    if (!el) return;
+    el.innerHTML = '<div class="maint-loading">正在读取导入记录…</div>';
+    fetch('/api/dailysync/history')
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) { renderMaintenanceData(el, data); })
+      .catch(function (e) {
+        el.innerHTML = '<div class="maint-empty">读取导入记录失败：' + esc(e.message) +
+          '<br><span class="muted">本地服务需在运行时才能查看历史；线上只读版不提供此数据。</span></div>';
+      });
+  }
+
+  function renderMaintenanceData(el, data) {
+    var days = (data && data.days) || {};
+    var keys = Object.keys(days).sort().reverse();   // 最新一天在前
+    if (!keys.length) {
+      el.innerHTML = '<div class="maint-empty">还没有导入记录。服务运行满 20 秒后会自动做一次每日同步，之后这里就能看到每天的成功/失败情况。</div>';
+      return;
+    }
+
+    // 顶部汇总：最近 14 天里，有失败的天数 / 全成功的天数
+    var recent = keys.slice(0, 14);
+    var failDays = 0, cleanDays = 0;
+    recent.forEach(function (k) {
+      var st = maintDayStat(days[k] && days[k].results);
+      if (st.failed > 0) failDays++; else cleanDays++;
+    });
+
+    var summary =
+      '<div class="maint-summary">' +
+        '<div class="maint-sum-card"><div class="n">' + keys.length + '</div><div class="l">已记录天数</div></div>' +
+        '<div class="maint-sum-card ' + (failDays ? 'bad' : '') + '"><div class="n">' + failDays + '</div><div class="l">近14天有失败</div></div>' +
+        '<div class="maint-sum-card"><div class="n">' + cleanDays + '</div><div class="l">近14天全成功</div></div>' +
+      '</div>';
+
+    var html = summary + '<div class="maint-days">';
+    keys.forEach(function (day) {
+      var rec = days[day] || {};
+      var results = rec.results || {};
+      var st = maintDayStat(results);
+      var dayCls = st.failed > 0 ? 'has-fail' : '';
+
+      // 平台格子：每个平台一个小块，失败红、成功绿、跳过灰
+      var cells = MAINT_PLATFORMS.map(function (p) {
+        var r = results[p.key];
+        var state = (r && r.state) || 'missing';
+        var meta = MAINT_STATE[state] || { label: '无记录', cls: 'missing' };
+        var note = maintNote(r);
+        return '<div class="maint-cell ' + meta.cls + '" title="' + esc(p.name + '：' + note) + '">' +
+          '<span class="mc-name">' + esc(p.name) + '</span>' +
+          '<span class="mc-state">' + esc(meta.label) + '</span>' +
+          (state === 'failed' ? '<span class="mc-note">' + esc(note) + '</span>' : '') +
+          '</div>';
+      }).join('');
+
+      // 失败明细：只列失败的平台，一眼看到原因
+      var fails = MAINT_PLATFORMS.filter(function (p) {
+        return results[p.key] && results[p.key].state === 'failed';
+      });
+      var failHtml = fails.length
+        ? '<div class="maint-fails">' + fails.map(function (p) {
+            return '<div class="maint-fail-row"><b>' + esc(p.name) + '</b><span>' + esc(maintNote(results[p.key])) + '</span></div>';
+          }).join('') + '</div>'
+        : '';
+
+      var timeInfo = rec.startedAt ? ('开始 ' + maintTime(rec.startedAt)) : '';
+      if (rec.finishedAt) timeInfo += (timeInfo ? ' · ' : '') + ('完成 ' + maintTime(rec.finishedAt));
+      if (!rec.allDone && rec.finishedAt) timeInfo += ' · 未完成';
+
+      html += '<div class="maint-day ' + dayCls + '">' +
+        '<div class="maint-day-head">' +
+          '<span class="md-date">' + esc(day) + '</span>' +
+          '<span class="md-badge ' + (st.failed ? 'bad' : 'good') + '">' +
+            (st.failed ? (st.failed + ' 项失败') : '全部成功') + '</span>' +
+          '<span class="md-counts">' + st.ok + ' 成功 · ' + st.skipped + ' 跳过' + (st.missing ? ' · ' + st.missing + ' 无记录' : '') + '</span>' +
+          (timeInfo ? '<span class="md-time">' + esc(timeInfo) + '</span>' : '') +
+        '</div>' +
+        '<div class="maint-cells">' + cells + '</div>' +
+        failHtml +
+        '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
   /* ============================ 导航与初始化 ============================ */
 
   function navigate(page) {
@@ -3301,6 +3447,7 @@
     if (page === 'career') { renderCareer(); }
     if (page === 'library') { renderLibrary(); }
     if (page === 'db') { renderDatabase(); }
+    if (page === 'maint') { renderMaintenance(); }
   }
 
   /** 某款游戏的数据来源平台名（可能有多个，用 / 连接），用于详情页标签 */
@@ -3470,6 +3617,8 @@
     [].forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
       b.addEventListener('click', function () { navigate(b.getAttribute('data-page')); });
     });
+    var maintBtn = document.getElementById('maint-refresh-btn');
+    if (maintBtn) maintBtn.addEventListener('click', renderMaintenance);
     // 锚点直达：网址带 #import / #career 等就直接切到那一页（验证 / 分享定位用）
     var h0 = (location.hash || '').replace('#', '');
     if (h0 && document.getElementById('page-' + h0)) navigate(h0);

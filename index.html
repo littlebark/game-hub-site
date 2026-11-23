@@ -46,6 +46,7 @@
         <button class="nav-btn" data-page="career">生涯</button>
         <button class="nav-btn" data-page="db">游戏数据库</button>
         <button class="nav-btn" data-page="import">导入</button>
+        <button class="nav-btn" data-page="maint">维护</button>
       </nav>
       <!-- 数据源切换已移到「游戏库」页内页签（app.js 注入），侧栏不再重复一份 -->
     </aside>
@@ -386,6 +387,18 @@
         </div>
       </section>
 
+      <!-- 页面 5：维护（2026-11-23）—— 每日各平台数据导入情况，失败优先 -->
+      <section id="page-maint" class="page">
+        <div class="page-head">
+          <div>
+            <div class="page-title">维护</div>
+            <div class="page-sub">每日数据导入情况 · 一眼看清成功与失败</div>
+          </div>
+          <button class="src-btn" id="maint-refresh-btn" type="button">↻ 刷新</button>
+        </div>
+        <div id="maint-content"><!-- 汇总与每日清单由 app.js 渲染 --></div>
+      </section>
+
     </main>
 
     <!-- 手机端底部 Tab 栏（桌面隐藏）。复用 .nav-btn[data-page]，navigate() 会自动同步高亮；
@@ -395,6 +408,7 @@
       <button class="nav-btn" data-page="career"><span class="tb-ico">◷</span><span>生涯</span></button>
       <button class="nav-btn" data-page="db"><span class="tb-ico">▤</span><span>数据库</span></button>
       <button class="nav-btn" data-page="import"><span class="tb-ico">↧</span><span>导入</span></button>
+      <button class="nav-btn" data-page="maint"><span class="tb-ico">⚙</span><span>维护</span></button>
     </nav>
   </div>
 
